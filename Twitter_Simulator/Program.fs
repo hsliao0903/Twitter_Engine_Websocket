@@ -17,7 +17,7 @@ open Message
 open UserInterface
 
 (* Websocket Interface *)
-open WebSocketSharp;
+open WebSocketSharp
 
 
  (* Actor System Configuration Settings (Locaol Side) *)
