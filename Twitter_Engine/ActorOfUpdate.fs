@@ -13,19 +13,26 @@ open FSharp.Json
 type ActorMsg = 
 | WsockToActor of string * WebSocketSessionManager * string
 
+type ConActorMsg =
+| WsockToConActor of string * WebSocketSessionManager * string
+| AutoConnect of int
+
+type RegActorMsg =
+| WsockToRegActor of string * IActorRef * WebSocketSessionManager * string
+
 
 //
 //   Actor for Register Request
 //
 
-let registerActor (serverMailbox:Actor<ActorMsg>) =
+let registerActor (serverMailbox:Actor<RegActorMsg>) =
     let nodeName = serverMailbox.Self.Path.Name
     let rec loop() = actor {
-        let! (message: ActorMsg) = serverMailbox.Receive()
+        let! (message: RegActorMsg) = serverMailbox.Receive()
 
         match message with
-        | WsockToActor (msg, sessionManager, sid) ->
-                (* Save the register information into data strucute *)
+        | WsockToRegActor (msg, connectionActorRef, sessionManager, sid) ->
+            (* Save the register information into data strucute *)
             (* Check if the userID has already registered before *)
             let regMsg = (Json.deserialize<RegInfo> msg)
             let status = updateRegDB regMsg
@@ -33,11 +40,19 @@ let registerActor (serverMailbox:Actor<ActorMsg>) =
                 ReqType = "Reply" ;
                 Type = "Register" ;
                 Status =  status ;
-                Desc =  Some (regMsg.UserID.ToString()) ;
+                Desc =  Some (regMsg.UserName) ;
             }
             let data = (Json.serialize reply)
             (* Reply for the register satus *)
             sessionManager.SendTo(data,sid)
+
+            if status = "Success" then
+                // let connectRequst:ConnectInfo = {
+                //     ReqType = "Connect" ;
+                //     UserID = regMsg.UserID ;
+                // }
+                // let data = (Json.serialize connectRequst)
+                connectionActorRef <! AutoConnect (regMsg.UserID)
 
         return! loop()
     }

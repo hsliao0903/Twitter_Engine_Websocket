@@ -2,10 +2,11 @@ open System
 open System.Security.Cryptography
 open System.Globalization
 open System.Text
+open System.Collections.Generic
 open Akka.Actor
 open Akka.FSharp
 open System.Diagnostics
-
+open UserAPIs
 
 (* For Json Libraries *)
 open FSharp.Data
@@ -20,30 +21,36 @@ open UserInterface
 open WebSocketSharp
 
 
- (* Actor System Configuration Settings (Locaol Side) *)
-let config =
-    Configuration.parse
-        @"akka {
-            log-dead-letters = off
-            log-dead-letters-during-shutdown = off
-            log-config-on-start = off
-            actor.provider = remote
-            remote.helios.tcp {
-                hostname = localhost
-                port = 0
-            }
-        }"
+//  (* Actor System Configuration Settings (Locaol Side) *)
+// let config =
+//     Configuration.parse
+//         @"akka {
+//             log-dead-letters = off
+//             log-dead-letters-during-shutdown = off
+//             log-config-on-start = off
+//             actor.provider = remote
+//             remote.helios.tcp {
+//                 hostname = localhost
+//                 port = 0
+//             }
+//         }"
 
-(* Some globalal variables *)
-let system = System.create "Simulator" config
-let serverNode = system.ActorSelection("akka.tcp://TwitterEngine@localhost:9001/user/TWServer")
+// (* Some globalal variables *)
+// let system = System.create "Simulator" config
+
+let system = ActorSystem.Create("UserInterface")
+// let serverNode = system.ActorSelection("akka.tcp://TwitterEngine@localhost:9001/user/TWServer")
+let serverWebsockAddr = "ws://localhost:9001"
 let globalTimer = Stopwatch()
-let mutable isSimulation = false
+
+
+
+
 
 
 
 (* Client Node Actor*)
-let clientActorNode (clientMailbox:Actor<string>) =
+let clientActorNode (isSimulation) (clientMailbox:Actor<string>) =
     let mutable nodeName = "User" + clientMailbox.Self.Path.Name
     let mutable nodeID = 
         match (Int32.TryParse(clientMailbox.Self.Path.Name)) with
@@ -61,6 +68,10 @@ let clientActorNode (clientMailbox:Actor<string>) =
     (* If a new query request comes, set it to true, until the server replies query seccess in reply message *)
     let mutable isQuerying = false
 
+    let wssDB = createWebsocketDB (serverWebsockAddr)
+    wssDB.["Register"].OnMessage.Add(regCallback (nodeName, wssDB, isSimulation))
+
+
     let rec loop() = actor {
         let! (message: string) = clientMailbox.Receive()
         let  jsonMsg = JsonValue.Parse(message)
@@ -68,217 +79,205 @@ let clientActorNode (clientMailbox:Actor<string>) =
         isOffline <- (not isOnline) && (not isDebug)
         match reqType with
             | "Register" ->
-                if isSimulation then
-                    (* Example JSON message for register API *)
-                    let regMsg:RegJson = { 
-                        ReqType = reqType ; 
-                        UserID = nodeID ; 
-                        UserName = nodeName ; 
-                        PublicKey = Some (nodeName+"Key") ;
-                    }
-                    serverNode <! (Json.serialize regMsg)
-                else
-                    serverNode <! message
+                sendRegMsgToServer (message,isSimulation, wssDB.[reqType], nodeID)
+            
+            // | "SendTweet" ->
+            //     if isOffline then
+            //         printfn "[%s] Send tweet failed, please connect to Twitter server first" nodeName
+            //     else   
+
+            //         if isSimulation then
+            //             serverNode <! message
+            //         else
+            //             serverNode <! message
+
+            // | "Retweet" ->
+            //     if isOffline then
+            //         printfn "[%s] Send tweet failed, please connect to Twitter server first" nodeName
+            //     else
+
+            //         if isSimulation then
+            //             serverNode <! message
+            //         else
+            //             serverNode <! message
+
+
+
+            // | "Subscribe" ->
+            //     if isOffline then
+            //         printfn "[%s] Subscribe failed, please connect to Twitter server first" nodeName
+            //     else
+
+            //         if isSimulation then
+            //             serverNode <! message
+            //         else
+            //             serverNode <! message
                 
 
 
-            | "SendTweet" ->
-                if isOffline then
-                    printfn "[%s] Send tweet failed, please connect to Twitter server first" nodeName
-                else   
-
-                    if isSimulation then
-                        serverNode <! message
-                    else
-                        serverNode <! message
-
-            | "Retweet" ->
-                if isOffline then
-                    printfn "[%s] Send tweet failed, please connect to Twitter server first" nodeName
-                else
-
-                    if isSimulation then
-                        serverNode <! message
-                    else
-                        serverNode <! message
-
-
-
-            | "Subscribe" ->
-                if isOffline then
-                    printfn "[%s] Subscribe failed, please connect to Twitter server first" nodeName
-                else
-
-                    if isSimulation then
-                        serverNode <! message
-                    else
-                        serverNode <! message
-                
-
-
-            | "Connect" ->
-                if isOnline then
-                    if isSimulation then
-                        nodeSelfRef <! """{"ReqType":"QueryHistory", "UserID":"""+"\""+ nodeID.ToString() + "\"}"
-                    else
+            // | "Connect" ->
+            //     if isOnline then
+            //         if isSimulation then
+            //             nodeSelfRef <! """{"ReqType":"QueryHistory", "UserID":"""+"\""+ nodeID.ToString() + "\"}"
+            //         else
                         
-                        serverNode <! message
-                else
-                    if isSimulation then
-                        serverNode <! message
-                    else
-                        serverNode <! message
+            //             serverNode <! message
+            //     else
+            //         if isSimulation then
+            //             serverNode <! message
+            //         else
+            //             serverNode <! message
                 
     
 
-            | "Disconnect" ->
-                isOnline <- false
+            // | "Disconnect" ->
+            //     isOnline <- false
 
-                if isSimulation then
-                    serverNode <! message
-                else
+            //     if isSimulation then
+            //         serverNode <! message
+            //     else
 
-                    serverNode <! message
+            //         serverNode <! message
                 
 
 
-            | "QueryHistory" | "QuerySubscribe" | "QueryMention" | "QueryTag" ->
-                if isOffline then
-                    printfn "[%s] Query failed, please connect to Twitter server first" nodeName
-                else
-                    if isQuerying then
-                        printfn "[%s] Query failed, please wait until the last query is done" nodeName
-                    else
-                        (* Set querying lock avoiding concurrent queries *)
-                        isQuerying <- true
+            // | "QueryHistory" | "QuerySubscribe" | "QueryMention" | "QueryTag" ->
+            //     if isOffline then
+            //         printfn "[%s] Query failed, please connect to Twitter server first" nodeName
+            //     else
+            //         if isQuerying then
+            //             printfn "[%s] Query failed, please wait until the last query is done" nodeName
+            //         else
+            //             (* Set querying lock avoiding concurrent queries *)
+            //             isQuerying <- true
 
-                        if reqType = "QueryTag" then
-                            if isSimulation then
-                                serverNode <! message
-                            else
-                                serverNode <! message
-                        else
-                            if isSimulation then
-                                serverNode <! message
-                            else
-                                serverNode <! message
+            //             if reqType = "QueryTag" then
+            //                 if isSimulation then
+            //                     serverNode <! message
+            //                 else
+            //                     serverNode <! message
+            //             else
+            //                 if isSimulation then
+            //                     serverNode <! message
+            //                 else
+            //                     serverNode <! message
                     
 
                 
-            (* Deal with all reply messages  *)
-            | "Reply" ->
-                let replyType = jsonMsg?Type.AsString()
-                match replyType with
-                    | "Register" ->
+            // (* Deal with all reply messages  *)
+            // | "Reply" ->
+            //     let replyType = jsonMsg?Type.AsString()
+            //     match replyType with
+            //         | "Register" ->
 
-                        let status = jsonMsg?Status.AsString()
-                        let registerUserID = jsonMsg?Desc.AsString() |> int
-                        if status = "Success" then
-                            if isSimulation then 
-                                printfn "[%s] Successfully registered" nodeName
-                            else
-                                isUserModeLoginSuccess <- Success
-                            (* If the user successfully registered, connect to the server automatically *)
-                            let (connectMsg:ConnectInfo) = {
-                                ReqType = "Connect" ;
-                                UserID = registerUserID ;
-                            }
-                            serverNode <! (Json.serialize connectMsg)
-                            globalTimer.Restart()
-                        else
-                            if isSimulation then 
-                                printfn "[%s] Register failed!\n\t(this userID might have already registered before)" nodeName
-                            else
-                                isUserModeLoginSuccess <- Fail
+            //             let status = jsonMsg?Status.AsString()
+            //             let registerUserID = jsonMsg?Desc.AsString() |> int
+            //             if status = "Success" then
+            //                 if isSimulation then 
+            //                     printfn "[%s] Successfully registered" nodeName
+            //                 else
+            //                     isUserModeLoginSuccess <- Success
+            //                 (* If the user successfully registered, connect to the server automatically *)
+            //                 let (connectMsg:ConnectInfo) = {
+            //                     ReqType = "Connect" ;
+            //                     UserID = registerUserID ;
+            //                 }
+            //                 serverNode <! (Json.serialize connectMsg)
+            //                 globalTimer.Restart()
+            //             else
+            //                 if isSimulation then 
+            //                     printfn "[%s] Register failed!\n\t(this userID might have already registered before)" nodeName
+            //                 else
+            //                     isUserModeLoginSuccess <- Fail
                         
 
-                    | "Subscribe" ->
-                        let status = jsonMsg?Status.AsString()
-                        if status = "Success" then
-                            printfn "[%s] Subscirbe done!" nodeName
-                        else
-                            printfn "[%s] Subscribe failed!" nodeName
+            //         | "Subscribe" ->
+            //             let status = jsonMsg?Status.AsString()
+            //             if status = "Success" then
+            //                 printfn "[%s] Subscirbe done!" nodeName
+            //             else
+            //                 printfn "[%s] Subscribe failed!" nodeName
 
-                    | "SendTweet" ->
+            //         | "SendTweet" ->
                         
-                        let status = jsonMsg?Status.AsString()
-                        if status = "Success" then
-                            printfn "[%s] %s" nodeName (jsonMsg?Desc.AsString())
-                        else
-                            printfn "[%s] %s" nodeName (jsonMsg?Desc.AsString())
+            //             let status = jsonMsg?Status.AsString()
+            //             if status = "Success" then
+            //                 printfn "[%s] %s" nodeName (jsonMsg?Desc.AsString())
+            //             else
+            //                 printfn "[%s] %s" nodeName (jsonMsg?Desc.AsString())
 
-                    | "Connect" ->
+            //         | "Connect" ->
                      
-                        let status = jsonMsg?Status.AsString()
-                        if status = "Success" then
-                            isOnline <- true
-                            if isSimulation then 
-                                printfn "[%s] User%s successfully connected to server" nodeName (jsonMsg?Desc.AsString())
-                            else
-                                isUserModeLoginSuccess <- Success
-                            (* Automatically query the history tweets of the connected user *)
-                            let (queryMsg:QueryInfo) = {
-                                ReqType = "QueryHistory" ;
-                                UserID = (jsonMsg?Desc.AsString()|> int) ;
-                                Tag = "" ;
-                            }
-                            serverNode <! (Json.serialize queryMsg)
-                            globalTimer.Restart()
-                        else
-                            if isSimulation then 
-                                printfn "[%s] Connection failed, %s" nodeName (jsonMsg?Desc.AsString())
-                            else
-                                isUserModeLoginSuccess <- Fail
+            //             let status = jsonMsg?Status.AsString()
+            //             if status = "Success" then
+            //                 isOnline <- true
+            //                 if isSimulation then 
+            //                     printfn "[%s] User%s successfully connected to server" nodeName (jsonMsg?Desc.AsString())
+            //                 else
+            //                     isUserModeLoginSuccess <- Success
+            //                 (* Automatically query the history tweets of the connected user *)
+            //                 let (queryMsg:QueryInfo) = {
+            //                     ReqType = "QueryHistory" ;
+            //                     UserID = (jsonMsg?Desc.AsString()|> int) ;
+            //                     Tag = "" ;
+            //                 }
+            //                 serverNode <! (Json.serialize queryMsg)
+            //                 globalTimer.Restart()
+            //             else
+            //                 if isSimulation then 
+            //                     printfn "[%s] Connection failed, %s" nodeName (jsonMsg?Desc.AsString())
+            //                 else
+            //                     isUserModeLoginSuccess <- Fail
 
 
-                    | "Disconnect" ->
+            //         | "Disconnect" ->
                   
-                        if isSimulation then 
-                            printfn "[%s] User%s disconnected from the server" nodeName (jsonMsg?Desc.AsString())
-                        else
-                            isUserModeLoginSuccess <- Success
-                    | "QueryHistory" ->
+            //             if isSimulation then 
+            //                 printfn "[%s] User%s disconnected from the server" nodeName (jsonMsg?Desc.AsString())
+            //             else
+            //                 isUserModeLoginSuccess <- Success
+            //         | "QueryHistory" ->
 
-                        let status = jsonMsg?Status.AsString()
-                        if status = "Success" then
-                            isQuerying <- false
-                            printfn "\n[%s] %s" nodeName (jsonMsg?Desc.AsString())
-                        else if status = "NoTweet" then
-                            isQuerying <- false
-                            printfn "[%s] %s" nodeName (jsonMsg?Desc.AsString())
-                        else
-                            printfn "[%s] Something Wrong with Querying History" nodeName
+            //             let status = jsonMsg?Status.AsString()
+            //             if status = "Success" then
+            //                 isQuerying <- false
+            //                 printfn "\n[%s] %s" nodeName (jsonMsg?Desc.AsString())
+            //             else if status = "NoTweet" then
+            //                 isQuerying <- false
+            //                 printfn "[%s] %s" nodeName (jsonMsg?Desc.AsString())
+            //             else
+            //                 printfn "[%s] Something Wrong with Querying History" nodeName
 
-                    | "ShowTweet" ->
-                        (* Don't print out any tweet on console if it is in simulation mode *)
-                        if not isSimulation then
-                            let tweetReplyInfo = (Json.deserialize<TweetReply> message)
-                            let tweetInfo = tweetReplyInfo.TweetInfo
-                            printfn "\n------------------------------------"
-                            printfn "Index: %i      Time: %s" (tweetReplyInfo.Status) (tweetInfo.Time.ToString())
-                            printfn "Author: User%i" (tweetInfo.UserID)
-                            printfn "Content: {%s}\n%s  @User%i  Retweet times: %i" (tweetInfo.Content) (tweetInfo.Tag) (tweetInfo.Mention) (tweetInfo.RetweetTimes)
-                            printfn "TID: %s" (tweetInfo.TweetID)
+            //         | "ShowTweet" ->
+            //             (* Don't print out any tweet on console if it is in simulation mode *)
+            //             if not isSimulation then
+            //                 let tweetReplyInfo = (Json.deserialize<TweetReply> message)
+            //                 let tweetInfo = tweetReplyInfo.TweetInfo
+            //                 printfn "\n------------------------------------"
+            //                 printfn "Index: %i      Time: %s" (tweetReplyInfo.Status) (tweetInfo.Time.ToString())
+            //                 printfn "Author: User%i" (tweetInfo.UserID)
+            //                 printfn "Content: {%s}\n%s  @User%i  Retweet times: %i" (tweetInfo.Content) (tweetInfo.Tag) (tweetInfo.Mention) (tweetInfo.RetweetTimes)
+            //                 printfn "TID: %s" (tweetInfo.TweetID)
 
-                    | "ShowSub" ->
-                        isQuerying <- false
-                        if not isSimulation then
-                            let subReplyInfo = (Json.deserialize<SubReply> message)
+            //         | "ShowSub" ->
+            //             isQuerying <- false
+            //             if not isSimulation then
+            //                 let subReplyInfo = (Json.deserialize<SubReply> message)
                             
-                            printfn "\n------------------------------------"
-                            printfn "Name: %s" ("User" + subReplyInfo.TargetUserID.ToString())
-                            printf "Subscribe To: "
-                            for id in subReplyInfo.Subscriber do
-                                printf "User%i " id
-                            printf "\nPublish To: "
-                            for id in subReplyInfo.Publisher do
-                                printf "User%i " id
-                            printfn "\n"
-                            printfn "[%s] Query Subscribe done" nodeName
+            //                 printfn "\n------------------------------------"
+            //                 printfn "Name: %s" ("User" + subReplyInfo.TargetUserID.ToString())
+            //                 printf "Subscribe To: "
+            //                 for id in subReplyInfo.Subscriber do
+            //                     printf "User%i " id
+            //                 printf "\nPublish To: "
+            //                 for id in subReplyInfo.Publisher do
+            //                     printf "User%i " id
+            //                 printfn "\n"
+            //                 printfn "[%s] Query Subscribe done" nodeName
                             
 
-                    | _ ->
-                        printfn "[%s] Unhandled Reply Message" nodeName
+            //         | _ ->
+            //             printfn "[%s] Unhandled Reply Message" nodeName
 
             | "UserModeOn" ->
                 let curUserID = jsonMsg?CurUserID.AsInteger()
@@ -295,6 +294,7 @@ let clientActorNode (clientMailbox:Actor<string>) =
 
 
 
+
 [<EntryPoint>]
 let main argv =
     try
@@ -305,19 +305,18 @@ let main argv =
         if programMode = "user" then
             (* Create a terminal actor node for user mode *)
             
-            let terminalRef = spawn system "TerminalNode" (clientActorNode)
+            let terminalRef = spawn system "TerminalNode" (clientActorNode false)
             startUserInterface terminalRef
 
         else if programMode = "simulate" then
             getSimualtionParamFromUser()
-            isSimulation <- true
-            startSimulation system globalTimer clientActorNode
+
+            startSimulation system globalTimer (clientActorNode true)
 
         else if programMode = "debug" then
-            isSimulation <- true
             printfn "\n\n[Debug Mode]\n"
             // use default simulation parameters
-            startSimulation system globalTimer clientActorNode
+            startSimulation system globalTimer (clientActorNode true)
         else
             printfn "\n\n[Error] Wrong argument!!\n Plese use: \n\t1. dotnet run simulate\n\t2. dotnet run user\n\t3. dotnet run debug\n"
             Environment.Exit 1

@@ -293,13 +293,13 @@ let updateOnlineUserDB userID option =
     else
         0
 
-let connectionActor (serverMailbox:Actor<ActorMsg>) =
+let connectionActor (serverMailbox:Actor<ConActorMsg>) =
     let nodeName = serverMailbox.Self.Path.Name
     let rec loop() = actor {
 
-        let! (message: ActorMsg) = serverMailbox.Receive()
+        let! (message: ConActorMsg) = serverMailbox.Receive()
         match message with
-        | WsockToActor (msg, sessionManager, sid) ->
+        | WsockToConActor (msg, sessionManager, sid) ->
             let connectionInfo = (Json.deserialize<ConnectInfo> msg)
             let userID = connectionInfo.UserID
             let reqType = connectionInfo.ReqType
@@ -336,6 +336,12 @@ let connectionActor (serverMailbox:Actor<ActorMsg>) =
                 }
                 let data = (Json.serialize reply)
                 sessionManager.SendTo(data,sid)
+        | AutoConnect userID ->
+            // If register success, then auto connect this userID to server
+            let ret = updateOnlineUserDB userID "connect"
+            if ret< 0 then printfn "[userID:%i] Auto connect to server failed " userID
+            else printfn "[UserID:%i] Auto connect to server succeed!" userID
+
         return! loop()
     }
     loop() 
@@ -368,7 +374,7 @@ type Register () =
     inherit WebSocketBehavior()
     override wssm.OnMessage message = 
         printfn "[/register] sessionID:%A Data:%s" wssm.ID message.Data 
-        regActorRef <! WsockToActor (message.Data, wssm.Sessions, wssm.ID)
+        regActorRef <! WsockToRegActor (message.Data,connectionActorRef , wssm.Sessions, wssm.ID)
 
 type Tweet () =
     inherit WebSocketBehavior()
@@ -392,7 +398,7 @@ type Connection () =
     inherit WebSocketBehavior()
     override wssm.OnMessage message = 
         printfn "[/connection] sessionID:%A Data:%s" (wssm.ID) (message.Data)
-        connectionActorRef <! WsockToActor (message.Data,wssm.Sessions,wssm.ID)
+        connectionActorRef <! WsockToConActor (message.Data,wssm.Sessions,wssm.ID)
 
 type QueryHis () =
     inherit WebSocketBehavior()
@@ -441,7 +447,6 @@ let main argv =
         wss.AddWebSocketService<QueryTag> ("/tag/query")
         wss.AddWebSocketService<QuerySub> ("/subscribe/query")
         wss.Start ()
-        
         printfn "Server start...."
         Console.ReadLine() |> ignore
         wss.Stop()

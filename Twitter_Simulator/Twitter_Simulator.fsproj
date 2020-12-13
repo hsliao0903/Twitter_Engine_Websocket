@@ -8,13 +8,12 @@
     <Compile Include="Simulator_helpers.fs" />
     <Compile Include="Simulator.fs" />
     <Compile Include="UserInterface.fs" />
+    <Compile Include="UserAPIs.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Akka" Version="1.4.12" />
-    <PackageReference Include="Akka.Cluster" Version="1.4.12" />
     <PackageReference Include="Akka.FSharp" Version="1.4.12" />
-    <PackageReference Include="Akka.Remote" Version="1.4.12" />
     <PackageReference Include="FSharp.Data" Version="3.3.3" />
     <PackageReference Include="FSharp.Json" Version="0.4.0" />
     <PackageReference Include="WebSocketSharp" Version="1.0.3-rc11" />
