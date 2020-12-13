@@ -71,11 +71,18 @@ let subscribeActor (serverMailbox:Actor<ActorMsg>) =
         | WsockToActor (msg, sessionManager, sid) ->
             let subInfo = (Json.deserialize<SubInfo> msg)
             let status = updatePubSubDB (subInfo.PublisherID) (subInfo.UserID)
+            let mutable descStr = ""
+            if status = "Success" then
+                descStr <- "Successfully subscribe to User " + (subInfo.PublisherID.ToString())
+            else
+                descStr <- "Failed to subscribe to User " + (subInfo.PublisherID.ToString())
+
+
             let (reply:ReplyInfo) = { 
                     ReqType = "Reply" ;
                     Type = "Subscribe" ;
                     Status =  status ;
-                    Desc =  None ;
+                    Desc =  Some descStr ;
             }
             let data = (Json.serialize reply)
             sessionManager.SendTo(data,sid)
@@ -173,7 +180,7 @@ let retweetActor (serverMailbox:Actor<ActorMsg>) =
                     ReqType = "Reply" ;
                     Type = "SendTweet" ;
                     Status =  "Failed" ;
-                    Desc =  Some "The random choose of retweet fails (same author situation)" ;
+                    Desc =  Some "Retweet failed, can't find the specified Tweet ID" ;
                 }
                 let data = (Json.serialize reply)
                 sessionManager.SendTo(data,sid)

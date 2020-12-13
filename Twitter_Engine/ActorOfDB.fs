@@ -104,9 +104,9 @@ let querySubActor (serverMailbox:Actor<QueryActorMsg>) =
     let rec loop() = actor {
         let! (message: QueryActorMsg) = serverMailbox.Receive()
         match message with
-        | WsockToQActor (msg, workerRef ,sessionManager, sid) ->
-            let subInfo = (Json.deserialize<SubInfo> msg)
-            let userID = subInfo.UserID
+        | WsockToQActor (msg, _ ,sessionManager, sid) ->
+            let queryInfo = (Json.deserialize<QueryInfo> msg)
+            let userID = queryInfo.UserID
             (* the user doesn't have any publisher subscripver information *)
             if not (subMap.ContainsKey(userID)) && not (pubMap.ContainsKey(userID))then
                 let (reply:ReplyInfo) = { 

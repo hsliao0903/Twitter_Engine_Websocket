@@ -409,19 +409,19 @@ type QueryHis () =
 type QueryMen () =
     inherit WebSocketBehavior()
     override wssm.OnMessage message = 
-        printfn "[/tweet/mention] sessionID:%A Data:%s" wssm.ID message.Data
+        printfn "[/mention/query] sessionID:%A Data:%s" wssm.ID message.Data
         queryMenActorRef <! WsockToQActor (message.Data, getRandomWorker(), wssm.Sessions, wssm.ID)
 
 type QueryTag () =
     inherit WebSocketBehavior()
     override wssm.OnMessage message = 
-        printfn "[/tweet/mention] sessionID:%A Data:%s" wssm.ID message.Data
+        printfn "[/tag/query] sessionID:%A Data:%s" wssm.ID message.Data
         queryTagActorRef <! WsockToQActor (message.Data, getRandomWorker(), wssm.Sessions, wssm.ID)
 type QuerySub () =
     inherit WebSocketBehavior()
     override wssm.OnMessage message = 
-        printfn "[/tweet/mention] sessionID:%A Data:%s" wssm.ID message.Data
-        querySubActorRef <! WsockToQActor (message.Data, getRandomWorker(), wssm.Sessions, wssm.ID)
+        printfn "[/subscribe/query] sessionID:%A Data:%s" wssm.ID message.Data
+        querySubActorRef <! WsockToQActor (message.Data, getRandomWorker() , wssm.Sessions, wssm.ID)
 
 
 
