@@ -48,7 +48,7 @@ let system = ActorSystem.Create("TwitterEngine")
 let numQueryWorker = 1000
 let spawnQueryActors (clientNum: int) = 
     [1 .. clientNum]
-    |> List.map (fun id -> spawn system ("Q"+id.ToString()) queryActorNode)
+    |> List.map (fun id -> (spawn system ("Q"+id.ToString()) queryActorNode))
     |> List.toArray
 let myQueryWorker = spawnQueryActors numQueryWorker
 let getRandomWorker () =
@@ -386,13 +386,13 @@ type Subscribe () =
     inherit WebSocketBehavior()
     override wssm.OnMessage message = 
         printfn "[/subscribe] sessionID:%A Data:%s" wssm.ID message.Data 
-        subscriveActorRef <! WsockToActor (message.Data, wssm.Sessions, wssm.ID)
+        subscriveActorRef <! WsockToActor (message.Data,wssm.Sessions,wssm.ID)
 
 type Connection () =
     inherit WebSocketBehavior()
     override wssm.OnMessage message = 
-        printfn "[/connection] sessionID:%A Data:%s" wssm.ID message.Data 
-        connectionActorRef <! WsockToActor (message.Data, wssm.Sessions, wssm.ID)
+        printfn "[/connection] sessionID:%A Data:%s" (wssm.ID) (message.Data)
+        connectionActorRef <! WsockToActor (message.Data,wssm.Sessions,wssm.ID)
 
 type QueryHis () =
     inherit WebSocketBehavior()
@@ -440,12 +440,11 @@ let main argv =
         wss.AddWebSocketService<QueryMen> ("/mention/query")
         wss.AddWebSocketService<QueryTag> ("/tag/query")
         wss.AddWebSocketService<QuerySub> ("/subscribe/query")
-
         wss.Start ()
+        
         printfn "Server start...."
         Console.ReadLine() |> ignore
         wss.Stop()
-        //let serverActor = spawn system "TWServer" serverActorNode
         
         // globalTimer.Start()
         

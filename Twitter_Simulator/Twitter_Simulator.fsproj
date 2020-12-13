@@ -1,9 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net5.0</TargetFramework>
+    <TargetFramework>net48</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Message.fs" />
+    <Compile Include="Simulator_helpers.fs" />
+    <Compile Include="Simulator.fs" />
+    <Compile Include="UserInterface.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
@@ -13,5 +17,6 @@
     <PackageReference Include="Akka.Remote" Version="1.4.12" />
     <PackageReference Include="FSharp.Data" Version="3.3.3" />
     <PackageReference Include="FSharp.Json" Version="0.4.0" />
+    <PackageReference Include="WebSocketSharp" Version="1.0.3-rc11" />
   </ItemGroup>
 </Project>
