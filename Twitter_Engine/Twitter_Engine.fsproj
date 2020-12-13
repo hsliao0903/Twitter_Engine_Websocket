@@ -2,12 +2,14 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net5.0</TargetFramework>
+    <TargetFramework>net48</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>
     <Compile Include="Collections.fs" />
-    <Compile Include="ActorOFDB.fs" />
+    <Compile Include="ActorOfDB.fs" />
+    <Compile Include="ActorOfUpdate.fs" />
+    <Compile Include="WebsocketInterface.fs" />
     <Compile Include="Program.fs" />
     
     
@@ -19,6 +21,7 @@
     <PackageReference Include="Akka.Remote" Version="1.4.12" />
     <PackageReference Include="FSharp.Data" Version="3.3.3" />
     <PackageReference Include="FSharp.Json" Version="0.4.0" />
+    <PackageReference Include="WebSocketSharp" Version="1.0.3-rc11" />
   </ItemGroup>
 
 </Project>
