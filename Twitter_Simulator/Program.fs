@@ -20,26 +20,7 @@ open UserInterface
 (* Websocket Interface *)
 open WebSocketSharp
 
-
-//  (* Actor System Configuration Settings (Locaol Side) *)
-// let config =
-//     Configuration.parse
-//         @"akka {
-//             log-dead-letters = off
-//             log-dead-letters-during-shutdown = off
-//             log-config-on-start = off
-//             actor.provider = remote
-//             remote.helios.tcp {
-//                 hostname = localhost
-//                 port = 0
-//             }
-//         }"
-
-// (* Some globalal variables *)
-// let system = System.create "Simulator" config
-
 let system = ActorSystem.Create("UserInterface")
-// let serverNode = system.ActorSelection("akka.tcp://TwitterEngine@localhost:9001/user/TWServer")
 let serverWebsockAddr = "ws://localhost:9001"
 let globalTimer = Stopwatch()
 
@@ -57,17 +38,6 @@ let clientActorNode (isSimulation) (clientMailbox:Actor<string>) =
         | (true, value) -> value
         | (false, _) -> 0
     
-    // let nodeSelfRef = clientMailbox.Self
-    
-    (* User have to connect (online) to server first before using twitter API, register API has no this kind of limit *)
-    // let mutable isOnline = false
-    // let mutable isDebug = false // developer use, break this limit
-    // let mutable isOffline = true
-
-    (* Need a query lock to make sure there is other query request until the last query has done*)
-    (* If a new query request comes, set it to true, until the server replies query seccess in reply message *)
-    // let mutable isQuerying = false
-    
 
     let wssDB = createWebsocketDB (serverWebsockAddr)
     (wssDB.["Register"]).OnMessage.Add(regCallback (nodeName, wssDB, isSimulation))
@@ -79,7 +49,6 @@ let clientActorNode (isSimulation) (clientMailbox:Actor<string>) =
     (wssDB.["QueryTag"]).OnMessage.Add(queryCallback (nodeName))
     (wssDB.["QuerySubscribe"]).OnMessage.Add(queryCallback (nodeName))
     (wssDB.["Disconnect"]).OnMessage.Add(disconnectCallback (nodeName, wssDB))
-    // (wssDB.["Disconnect"]).OnClose.Add()
     (wssDB.["Connect"]).OnMessage.Add(connectCallback (nodeName, wssDB))
 
 
@@ -87,7 +56,6 @@ let clientActorNode (isSimulation) (clientMailbox:Actor<string>) =
         let! (message: string) = clientMailbox.Receive()
         let  jsonMsg = JsonValue.Parse(message)
         let  reqType = jsonMsg?ReqType.AsString()
-        // isOffline <- (not isOnline) && (not isDebug)
         match reqType with
             | "Register" ->
                 sendRegMsgToServer (message,isSimulation, wssDB.[reqType], nodeID)

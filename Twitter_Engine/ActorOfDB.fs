@@ -13,9 +13,7 @@ open TwitterServerCollections
 open WebSocketSharp.Server
 
 //
-//
 // Query Actor
-//
 //
 
 type QueryActorMsg = 

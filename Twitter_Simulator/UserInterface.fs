@@ -71,8 +71,6 @@ let startUserInterface terminalRef =
     let mutable curUserID = -1
     let mutable curState= 0
     (* Prompt User for Simulator Usage *)
-    
-    // (showPrompt "loginFirst")
     while true do
         (* First State, User have to register or connect(login) first *)
         (* If successfully registered, *)
@@ -84,7 +82,7 @@ let startUserInterface terminalRef =
                     let requestJSON = genRegisterJSON "key"
                     let tmpuserID = getUserID requestJSON
                     terminalRef <! requestJSON
-                    // printfn "Send register JSON to server...\n%A" requestJSON
+  
                     waitForServerResponse (5.0)
                     if isUserModeLoginSuccess = Success then
                         printBanner ("Successfully registered and login as User"+ tmpuserID.ToString())
@@ -94,16 +92,16 @@ let startUserInterface terminalRef =
                         (showPrompt "afterLogin" curUserID)
                     else if isUserModeLoginSuccess = Fail then
                         printBanner (sprintf "Faild to register for UserID: %i\nThis userID might have been used already..." tmpuserID)
-                        // (showPrompt "loginFirst")
+
                     else
                         printBanner ("Faild to register for UserID: " + tmpuserID.ToString() + "\n(Server no response, timeout occurs)")
-                        // (showPrompt "loginFirst")
+
 
                 | "2" | "connect" ->
                     let requestJSON = genConnectDisconnectJSON ("Connect", -1)
                     let tmpuserID = getUserID requestJSON
                     terminalRef <! requestJSON
-                    // printfn "Send Connect JSON to server...\n%A" requestJSON
+
                     waitForServerResponse (5.0)
                     if isUserModeLoginSuccess = Success then
                         printBanner ("Successfully connected and login as User"+ tmpuserID.ToString())
@@ -113,17 +111,17 @@ let startUserInterface terminalRef =
                         (showPrompt "afterLogin" curUserID)
                     else if isUserModeLoginSuccess = Fail then
                         printBanner (sprintf "Faild to connect and login for UserID: %i\nIncorrect userID or already connected before..." tmpuserID)
-                        // (showPrompt "loginFirst")
+
                     else
                         printBanner ("Faild to connect and login for UserID: " + tmpuserID.ToString() + "\n(Server no response, timeout occurs)")
-                        // (showPrompt "loginFirst")
+
 
                 | "3" | "exit" | "ex" ->
                     printBanner "Exit the user interface terminal program, bye!"
                     Environment.Exit 1
                 | _ ->
                     ()
-                    //(showPrompt "loginFirst")
+
 
         while curState = 1 do
             let inputStr = Console.ReadLine()
@@ -131,15 +129,15 @@ let startUserInterface terminalRef =
                 | "1"| "sendtweet" ->
                     terminalRef <! genTweetJSON curUserID
                     waitServerResPlusAutoLogoutCheck (5.0, "sendtweet")
-                    // (showPrompt "afterLogin")
+
                 | "2"| "retweet" -> 
                     terminalRef <! genRetweetJSON curUserID
                     waitServerResPlusAutoLogoutCheck (5.0, "retweet")
-                    // (showPrompt "afterLogin")
+
                 | "3"| "subscribe" | "sub" -> 
                     terminalRef <! genSubscribeJSON curUserID
                     waitServerResPlusAutoLogoutCheck (5.0, "subscribe")
-                    // (showPrompt "afterLogin")
+
                 | "4" | "disconnect" ->
                     terminalRef <! genConnectDisconnectJSON ("Disconnect", curUserID)
                     waitForServerResponse (5.0)
@@ -151,25 +149,23 @@ let startUserInterface terminalRef =
                         curUserID <- -1
                         curState <- 0
                         (showPrompt "loginFirst" curUserID)
-                    // else
-                    //     printBanner ("Faild to disconnect and logout for UserID: " + curUserID.ToString() + "\n(Server no response, timeout occurs)")
-                    //     (showPrompt "afterLogin")
+
                 | "5"| "history" -> 
                     terminalRef <! genQueryJSON "QueryHistory"
                     waitServerResPlusAutoLogoutCheck (10.0, "QueryHistory")
-                    // (showPrompt "afterLogin")
+
                 | "6"| "tag" -> 
                     terminalRef <! genQueryJSON "QueryTag"
                     waitServerResPlusAutoLogoutCheck (5.0, "QueryTag")
-                    // (showPrompt "afterLogin")
+
                 | "7"| "mention" | "men" -> 
                     terminalRef <! genQueryJSON "QueryMention"
                     waitServerResPlusAutoLogoutCheck (5.0, "QueryMention")
-                    // (showPrompt "afterLogin")
+
                 | "8"| "Qsubscribe" | "Qsub" -> 
                     terminalRef <! genQueryJSON "QuerySubscribe"
                     waitServerResPlusAutoLogoutCheck (5.0, "QuerySubscribe")
-                    // (showPrompt "afterLogin")
+
                 | "9" | "exit" | "ex" ->
                     terminalRef <! genConnectDisconnectJSON ("Disconnect", curUserID)
                     printBanner "Exit the user interface terminal program, bye!"
@@ -177,4 +173,3 @@ let startUserInterface terminalRef =
                 | _ ->
                     (showPrompt "afterLogin" curUserID)
                     ()
-                    // (showPrompt "afterLogin")
