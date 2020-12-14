@@ -79,6 +79,7 @@ let clientActorNode (isSimulation) (clientMailbox:Actor<string>) =
     (wssDB.["QueryTag"]).OnMessage.Add(queryCallback (nodeName))
     (wssDB.["QuerySubscribe"]).OnMessage.Add(queryCallback (nodeName))
     (wssDB.["Disconnect"]).OnMessage.Add(disconnectCallback (nodeName, wssDB))
+    // (wssDB.["Disconnect"]).OnClose.Add()
     (wssDB.["Connect"]).OnMessage.Add(connectCallback (nodeName, wssDB))
 
 
@@ -135,7 +136,6 @@ let main argv =
 
         else if programMode = "simulate" then
             getSimualtionParamFromUser()
-
             startSimulation system globalTimer (clientActorNode true)
 
         else if programMode = "debug" then

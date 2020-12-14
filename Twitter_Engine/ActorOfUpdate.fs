@@ -180,7 +180,7 @@ let retweetActor (serverMailbox:Actor<ActorMsg>) =
                     ReqType = "Reply" ;
                     Type = "SendTweet" ;
                     Status =  "Failed" ;
-                    Desc =  Some "Retweet failed, can't find the specified Tweet ID" ;
+                    Desc =  Some "Retweet failed, can't find the specified Tweet ID or due to author rule\n" ;
                 }
                 let data = (Json.serialize reply)
                 sessionManager.SendTo(data,sid)

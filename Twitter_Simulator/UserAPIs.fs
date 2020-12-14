@@ -35,15 +35,14 @@ let enableWss (wssDB:Dictionary<string, WebSocket>) =
     (wssDB.["QuerySubscribe"].Connect())
 
 let disableWss (wssDB:Dictionary<string, WebSocket>) =
-    wssDB.["SendTweet"].Close()
-    wssDB.["Retweet"].Close()
-    wssDB.["Subscribe"].Close()
-    wssDB.["Disconnect"].Close()
-    wssDB.["QueryHistory"].Close()
-    wssDB.["QueryMention"].Close()
-    wssDB.["QueryTag"].Close()
-    wssDB.["QuerySubscribe"].Close()
-
+    if (wssDB.["SendTweet"].IsAlive) then (wssDB.["SendTweet"].Close())
+    if (wssDB.["Retweet"].IsAlive) then (wssDB.["Retweet"].Close())
+    if (wssDB.["Subscribe"].IsAlive) then (wssDB.["Subscribe"].Close())
+    if (wssDB.["Disconnect"].IsAlive) then (wssDB.["Disconnect"].Close())
+    if (wssDB.["QueryHistory"].IsAlive) then (wssDB.["QueryHistory"].Close())
+    if (wssDB.["QueryMention"].IsAlive) then (wssDB.["QueryMention"].Close())
+    if (wssDB.["QueryTag"].IsAlive) then (wssDB.["QueryTag"].Close())
+    if (wssDB.["QuerySubscribe"].IsAlive) then (wssDB.["QuerySubscribe"].Close())
 
 // 
 // Websocket OnMessage Callback Functions
@@ -95,8 +94,13 @@ let disconnectCallback (nodeName, wssDB:Dictionary<string,WebSocket>) = fun (msg
 let replyCallback (nodeName) = fun (msg:MessageEventArgs) ->
     let replyInfo = (Json.deserialize<ReplyInfo> msg.Data)
     let isSuccess = if (replyInfo.Status = "Success") then (true) else (false)
-    if isSuccess then printfn "[%s] %s" nodeName (replyInfo.Desc.Value)
-    else printfn "[%s] [Error] %s" nodeName (replyInfo.Desc.Value)
+    if isSuccess then
+        isUserModeLoginSuccess <- Success
+        //printfn "[%s] %s" nodeName (replyInfo.Desc.Value)
+        printBanner (sprintf "[%s] %s" nodeName (replyInfo.Desc.Value))
+    else 
+        isUserModeLoginSuccess <- Fail
+        printBanner (sprintf "[%s] [Error]\n%s" nodeName (replyInfo.Desc.Value))
 
 let printTweet message = 
     let tweetReplyInfo = (Json.deserialize<TweetReply> message)
@@ -120,17 +124,23 @@ let printSubscribe message nodeName =
     for id in subReplyInfo.Publisher do
         printf "User%i " id
     printfn "\n"
-    printfn "[%s] Query Subscribe done" nodeName
+    printBanner (sprintf "[%s] Finish to show User%i's subscribe status" nodeName subReplyInfo.TargetUserID)
 
 let queryCallback (nodeName) = fun (msg:MessageEventArgs) ->
     let  jsonMsg = JsonValue.Parse(msg.Data)
     let  reqType = jsonMsg?Type.AsString()
-    if reqType = "ShowTweet" then printTweet (msg.Data)
-    else if reqType = "ShowSub" then printSubscribe (msg.Data) (nodeName)
+    if reqType = "ShowTweet" then
+        printTweet (msg.Data)
+    else if reqType = "ShowSub" then 
+        printSubscribe (msg.Data) (nodeName)
     else
         let isSuccess = if (jsonMsg?Status.AsString() = "Success") then (true) else (false)
-        if isSuccess then printfn "[%s] %s" nodeName (jsonMsg?Desc.AsString())
-        else printfn "[%s] [Error] %s" nodeName (jsonMsg?Desc.AsString())
+        if isSuccess then 
+            isUserModeLoginSuccess <- Success
+            printBanner (sprintf "[%s]\n%s" nodeName (jsonMsg?Desc.AsString()))
+        else 
+            isUserModeLoginSuccess <- Fail
+            printBanner (sprintf "[%s]\n%s" nodeName (jsonMsg?Desc.AsString()))
 
 
 
@@ -156,6 +166,12 @@ let sendRegMsgToServer (msg:string, isSimulation, wssReg:WebSocket, nodeID) =
 
 let sendRequestMsgToServer (msg:string, reqType, wssDB:Dictionary<string,WebSocket>, nodeName) =
     if not (wssDB.[reqType].IsAlive) then
-        printfn "[%s] Unable to \"%s\", please connect to the server first..." nodeName reqType
+        isUserModeLoginSuccess <- SessionTimeout
+        if reqType = "Disconnect" then
+            wssDB.[reqType].Connect()
+            wssDB.[reqType].Send(msg)
+            isUserModeLoginSuccess <- SessionTimeout
+            printBanner (sprintf "[%s]\nSession timeout!\n Disconnect from the server..." nodeName)
+            // printBanner (sprintf "[%s] Unable to \"%s\", session timeout!\n Please disconnect and then reconnect to the server..." nodeName reqType)
     else 
         wssDB.[reqType].Send(msg)  
