@@ -2,6 +2,7 @@ module Message
 
 
 open System
+open System.Security.Cryptography
 (* For Json Libraries *)
 open FSharp.Data
 open FSharp.Data.JsonExtensions
@@ -17,13 +18,24 @@ type ReplyInfo = {
     Desc : string option
 }
 
-
+type RegReply = {
+    ReqType : string
+    Type : string
+    Status : string
+    ServerPublicKey : string
+    Desc : string option
+}
 
 type RegJson = {
     ReqType : string
     UserID : int
     UserName : string
-    PublicKey : string option
+    PublicKey : string
+}
+
+type SignedTweet = {
+    UnsignedJson: string
+    HMACSignature: string
 }
 
 type TweetInfo = {
@@ -61,6 +73,15 @@ type SubReply = {
 type ConnectInfo = {
     ReqType : string
     UserID : int
+    Signature: string
+}
+
+type ConnectReply = {
+    ReqType: string
+    Type: string
+    Status: string
+    Authentication: string
+    Desc: string option
 }
 
 type QueryInfo = {
@@ -131,7 +152,7 @@ let genRegisterJSON (publicKey:string) =
         ReqType = "Register" ; 
         UserID =  userid ;
         UserName = username ; 
-        PublicKey = Some (publicKey) ;
+        PublicKey = publicKey;
     }
     Json.serialize regJSON
 
@@ -142,12 +163,14 @@ let genConnectDisconnectJSON (option:string, curUserID:int) =
         let connectJSON:ConnectInfo = {
             ReqType = "Connect" ;
             UserID = userid ;
+            Signature = "";
         }
         Json.serialize connectJSON
     else
         let connectJSON:ConnectInfo = {
             ReqType = "Disconnect" ;
             UserID = curUserID ;
+            Signature = "";
         }
         Json.serialize connectJSON
 

@@ -1,6 +1,7 @@
 module UpdateDBActors
 
 open System
+open System.Security.Cryptography
 open Akka.Actor
 open Akka.FSharp
 open WebSocketSharp.Server
@@ -9,6 +10,8 @@ open TwitterServerCollections
 open FSharp.Data
 open FSharp.Data.JsonExtensions
 open FSharp.Json
+
+open Authentication
 
 type ActorMsg = 
 | WsockToActor of string * WebSocketSessionManager * string
@@ -20,6 +23,8 @@ type ConActorMsg =
 type RegActorMsg =
 | WsockToRegActor of string * IActorRef * WebSocketSessionManager * string
 
+type LoginActorMsg =
+| WsockToLoginActor of string * IActorRef * WebSocketSessionManager * string
 
 //
 //   Actor for Register Request
@@ -36,11 +41,16 @@ let registerActor (serverMailbox:Actor<RegActorMsg>) =
             (* Check if the userID has already registered before *)
             let regMsg = (Json.deserialize<RegInfo> msg)
             let status = updateRegDB regMsg
-            let reply:ReplyInfo = { 
+            let serverECDH = ECDiffieHellman.Create()
+            let serverPublicKey = 
+                serverECDH.ExportSubjectPublicKeyInfo() |> Convert.ToBase64String            
+                
+            let reply:RegReply = { 
                 ReqType = "Reply" ;
                 Type = "Register" ;
                 Status =  status ;
-                Desc =  Some (regMsg.UserName) ;
+                ServerPublicKey = serverPublicKey;
+                Desc = Some (regMsg.UserID.ToString());
             }
             let data = (Json.serialize reply)
             (* Reply for the register satus *)
@@ -52,11 +62,13 @@ let registerActor (serverMailbox:Actor<RegActorMsg>) =
                 //     UserID = regMsg.UserID ;
                 // }
                 // let data = (Json.serialize connectRequst)
+                updateKeyDB regMsg serverECDH 
                 connectionActorRef <! AutoConnect (regMsg.UserID)
 
         return! loop()
     }
     loop()     
+
 
 
 //
@@ -102,21 +114,15 @@ let tweetActor (serverMailbox:Actor<ActorMsg>) =
 
         match message with
         | WsockToActor (msg, sessionManager, sid) ->
-            let orgtweetInfo = (Json.deserialize<TweetInfo> msg)
-            let tweetInfo = assignTweetID orgtweetInfo
+            let m = (Json.deserialize<SignedTweet> msg)
+            let unsignedJson = m.UnsignedJson
+            let tInfo = Json.deserialize<TweetInfo> unsignedJson
+            let sharedSecretKey = 
+                keyMap.[tInfo.UserID].SharedSecretKey |> Convert.FromBase64String
+            let tweetInfo = tInfo |> assignTweetID
             (* Store the informations for this tweet *)
             (* Check if the userID has already registered? if not, don't accept this Tweet *)
-            if (isValidUser tweetInfo.UserID) then
-                updateTweetDB tweetInfo
-                let (reply:ReplyInfo) = { 
-                    ReqType = "Reply" ;
-                    Type = "SendTweet" ;
-                    Status =  "Success" ;
-                    Desc =  Some "Successfully send a Tweet to Server" ;
-                }
-                let data = (Json.serialize reply)
-                sessionManager.SendTo(data,sid)
-            else
+            if not (isValidUser tweetInfo.UserID) then
                 let (reply:ReplyInfo) = { 
                     ReqType = "Reply" ;
                     Type = "SendTweet" ;
@@ -125,6 +131,26 @@ let tweetActor (serverMailbox:Actor<ActorMsg>) =
                 }
                 let data = (Json.serialize reply)
                 sessionManager.SendTo(data,sid)
+            elif not (verifyHMAC unsignedJson m.HMACSignature sharedSecretKey) then
+                let (reply:ReplyInfo) = { 
+                    ReqType = "Reply" ;
+                    Type = "SendTweet" ;
+                    Status =  "Failed" ;
+                    Desc =  Some "Cannot pass HMAC authentication" ;
+                }
+                let data = (Json.serialize reply)
+                sessionManager.SendTo(data,sid)
+            else                
+                updateTweetDB tweetInfo
+                let (reply:ReplyInfo) = { 
+                    ReqType = "Reply" ;
+                    Type = "SendTweet" ;
+                    Status =  "Success" ;
+                    Desc =  Some "Successfully send a Tweet to Server" ;
+                }
+                let data = (Json.serialize reply)
+                sessionManager.SendTo(data,sid)            
+                
 
         return! loop()
     }

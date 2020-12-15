@@ -7,6 +7,7 @@ open Akka.Actor
 open Akka.FSharp
 open System.Diagnostics
 open UserAPIs
+open Authentication
 
 (* For Json Libraries *)
 open FSharp.Data
@@ -37,7 +38,8 @@ let clientActorNode (isSimulation) (clientMailbox:Actor<string>) =
         match (Int32.TryParse(clientMailbox.Self.Path.Name)) with
         | (true, value) -> value
         | (false, _) -> 0
-    
+    let nodeECDH = ECDiffieHellman.Create()
+    let nodePublicKey = nodeECDH.ExportSubjectPublicKeyInfo() |> Convert.ToBase64String
 
     let wssDB = createWebsocketDB (serverWebsockAddr)
     (wssDB.["Register"]).OnMessage.Add(regCallback (nodeName, wssDB, isSimulation))
@@ -49,22 +51,21 @@ let clientActorNode (isSimulation) (clientMailbox:Actor<string>) =
     (wssDB.["QueryTag"]).OnMessage.Add(queryCallback (nodeName))
     (wssDB.["QuerySubscribe"]).OnMessage.Add(queryCallback (nodeName))
     (wssDB.["Disconnect"]).OnMessage.Add(disconnectCallback (nodeName, wssDB))
-    (wssDB.["Connect"]).OnMessage.Add(connectCallback (nodeName, wssDB))
-
+    (wssDB.["Connect"]).OnMessage.Add(connectCallback (nodeID, wssDB, nodeECDH))
 
     let rec loop() = actor {
         let! (message: string) = clientMailbox.Receive()
         let  jsonMsg = JsonValue.Parse(message)
         let  reqType = jsonMsg?ReqType.AsString()
         match reqType with
-            | "Register" ->
-                sendRegMsgToServer (message,isSimulation, wssDB.[reqType], nodeID)
-
-            | "SendTweet" | "Retweet" | "Subscribe"
+            | "Register" ->                
+                sendRegMsgToServer (message,isSimulation, wssDB.[reqType], nodeID, nodePublicKey)
+            | "SendTweet" ->
+                sendTweetToServer (message, wssDB.["SendTweet"], nodeName, nodeECDH)
+            | "Retweet" | "Subscribe"
             | "QueryHistory" | "QueryMention" | "QueryTag" | "QuerySubscribe" 
             | "Disconnect" ->
                 sendRequestMsgToServer (message, reqType, wssDB, nodeName)        
-
             | "Connect" ->
                 let wssCon = wssDB.["Connect"]
                 wssCon.Connect()

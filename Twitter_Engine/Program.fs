@@ -6,7 +6,9 @@ open System.Collections.Generic
 open System.Text
 open Akka.Actor
 open Akka.FSharp
+
 open ActorOFDB
+open Authentication
 open TwitterServerCollections
 open WebSocketSharp.Server
 open UpdateDBActors
@@ -27,8 +29,6 @@ let myQueryWorker = spawnQueryActors numQueryWorker
 let getRandomWorker () =
     let rnd = Random()
     myQueryWorker.[rnd.Next(numQueryWorker)]
-
-
 
 //
 //   Actor for Connection Request
@@ -58,30 +58,60 @@ let connectionActor (serverMailbox:Actor<ConActorMsg>) =
         | WsockToConActor (msg, sessionManager, sid) ->
             let connectionInfo = (Json.deserialize<ConnectInfo> msg)
             let userID = connectionInfo.UserID
-            let reqType = connectionInfo.ReqType
+            let reqType = connectionInfo.ReqType           
             
-            if reqType = "Connect" then
+            match reqType with
+            | "Connect" ->
                 (* Only allow user to query after successfully connected (login) and registered *)
-                let ret = (updateOnlineUserDB userID "connect")
-                if ret < 0 then
-                    let (reply:ReplyInfo) = { 
+                if not (onlineUserSet.Contains(userID)) && isValidUser userID then
+                    let ch = generateChallenge
+                    challengeCaching userID ch |> Async.Start
+                    let (reply:ConnectReply) = { 
+                        ReqType = "Reply" ;
+                        Type = reqType ;
+                        Status =  "Auth" ;
+                        Authentication = ch;
+                        Desc =  Some (userID.ToString());
+                    }
+                    let data = (Json.serialize reply)
+                    sessionManager.SendTo(data,sid)  
+                else 
+                    let (reply:ConnectReply) = { 
                         ReqType = "Reply" ;
                         Type = reqType ;
                         Status =  "Fail" ;
-                        Desc =  Some "Please register first" ;
+                        Authentication = "";
+                        Desc =  Some ("Please register first") ;
                     }
                     let data = (Json.serialize reply)
-                    sessionManager.SendTo(data,sid)
-                else 
-                    let (reply:ReplyInfo) = { 
+                    sessionManager.SendTo(data,sid)                         
+            | "Auth" ->
+                let keyInfo = keyMap.[userID]
+                if (challengeCache.ContainsKey userID) then
+                    let answer = challengeCache.[userID]
+                    let signature = connectionInfo.Signature
+                    if (verifySignature answer signature keyInfo.UserPublicKey) then
+                        let (reply:ConnectReply) = { 
+                            ReqType = "Reply" ;
+                            Type = reqType ;
+                            Status =  "Success" ;
+                            Authentication = "";
+                            Desc =  Some (userID.ToString());
+                        }
+                        let data = (Json.serialize reply)
+                        sessionManager.SendTo(data,sid)  
+                        serverMailbox.Self <! AutoConnect userID
+                else
+                    let (reply:ConnectReply) = { 
                         ReqType = "Reply" ;
                         Type = reqType ;
-                        Status =  "Success" ;
-                        Desc =  Some (userID.ToString()) ;
+                        Status =  "Fail" ;
+                        Desc =  Some "Authentication failed!" ;
+                        Authentication = "";
                     }
                     let data = (Json.serialize reply)
                     sessionManager.SendTo(data,sid)
-            else
+            | _ ->
                 (* if disconnected, user cannot query or send tweet *)
                 (updateOnlineUserDB userID "disconnect") |> ignore
                 let (reply:ReplyInfo) = { 
@@ -120,6 +150,7 @@ let regActorRef = spawn system "Register-DB-Worker" registerActor
 let tweetActorRef = spawn system "AddTweet-DB-Worker" tweetActor
 let retweetActorRef = spawn system "ReTweet-DB-Worker" retweetActor
 let subscriveActorRef = spawn system "Subscrive-DB-Worker" subscribeActor
+//let loginActorRef = spawn system "Login-DB-Worker" loginActor
 let connectionActorRef = spawn system "Connection-DB-Worker" connectionActor
 let queryHisActorRef = spawn system "QHistory-DB-Worker" queryHistoryActor
 let queryMenActorRef = spawn system "QMention-DB-Worker" queryMentionActor
@@ -130,7 +161,7 @@ type Register () =
     inherit WebSocketBehavior()
     override wssm.OnMessage message = 
         printfn "[/register] sessionID:%A Data:%s" wssm.ID message.Data 
-        regActorRef <! WsockToRegActor (message.Data,connectionActorRef , wssm.Sessions, wssm.ID)
+        regActorRef <! WsockToRegActor (message.Data, connectionActorRef, wssm.Sessions, wssm.ID)
 
 type Tweet () =
     inherit WebSocketBehavior()

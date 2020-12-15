@@ -12,6 +12,7 @@ type UserModeStatusCheck =
 | SessionTimeout
 
 let mutable (isUserModeLoginSuccess:UserModeStatusCheck) = Waiting
+let mutable (serverPublicKey:string) = ""
 
 (* User Mode Prompt  *)
 let printBanner (printStr:string) =

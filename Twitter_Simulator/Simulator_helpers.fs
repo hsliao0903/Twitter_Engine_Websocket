@@ -44,12 +44,14 @@ let connect (client: IActorRef) =
     let (request: ConnectInfo) = {
         ReqType = "Connect";
         UserID = client.Path.Name |> int;
+        Signature = "";
     }
     client <! (Json.serialize request)
 let disconnect (client: IActorRef) = 
     let (request: ConnectInfo) = {
         ReqType = "Disconnect";
         UserID = client.Path.Name |> int;
+        Signature = ""
     }
     client <! (Json.serialize request)
 

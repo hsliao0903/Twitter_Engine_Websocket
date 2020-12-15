@@ -2,8 +2,11 @@ module TwitterServerCollections
 
 open System
 open System.Collections.Generic
+open System.Security.Cryptography
 open Akka.Actor
 open Akka.FSharp
+
+open Authentication
 
 (* Different API request JSON message structures *)
 
@@ -18,7 +21,20 @@ type RegInfo = {
     ReqType : string
     UserID : int
     UserName : string
-    PublicKey : string option
+    PublicKey : string
+}
+
+type RegReply = {
+    ReqType : string
+    Type : string
+    Status : string
+    ServerPublicKey : string
+    Desc: string option
+}
+
+type SignedTweet = {
+    UnsignedJson : string
+    HMACSignature: string
 }
 
 type TweetInfo = {
@@ -56,6 +72,15 @@ type SubReply = {
 type ConnectInfo = {
     ReqType : string
     UserID : int
+    Signature: string
+}
+
+type ConnectReply = {
+    ReqType: string
+    Type: string
+    Status: string
+    Authentication: string
+    Desc: string option
 }
 
 type QueryInfo = {
@@ -69,6 +94,12 @@ type RetweetInfo = {
     UserID : int
     TargetUserID : int
     RetweetID : string
+}
+
+type KeyInfo = {
+    UserPublicKey: String
+    SharedSecretKey: String
+    ServerECDH: ECDiffieHellman
 }
 
 (* Data Collections to Store Client informations *)
@@ -86,9 +117,10 @@ let pubMap = new Dictionary<int, List<int>>()
 let subMap = new Dictionary<int, List<int>>()
 (* userID, list of tweetID that mentions the user *)
 let mentionMap = new Dictionary<int, List<string>>()
+(* userID, info of keys *)
+let keyMap = new Dictionary<int, KeyInfo>()
 
-
-
+let challengeCache = new Dictionary<int, String>()
 
 
 (* Spawn Actors Helpter Function *)
@@ -99,6 +131,13 @@ let actorOfSink f = actorOf f
 let isValidUser userID = 
     (regMap.ContainsKey(userID)) 
 
+let challengeCaching (userID: int) (challenge: string) =
+    async{
+        challengeCache.Add(userID, challenge)
+        do! Async.Sleep 1000
+        challengeCache.Remove(userID) |> ignore
+    }
+    
 
 
 // let regMapAdder (userID, info:RegInfo) =
@@ -114,6 +153,16 @@ let updateRegDB (newInfo:RegInfo) =
         "Success"
     else
         "Fail"
+
+let updateKeyDB (newInfo:RegInfo) (serverECDH: ECDiffieHellman)=
+    keyMap.Add(
+        newInfo.UserID,
+        {
+            UserPublicKey = newInfo.PublicKey;
+            SharedSecretKey = 
+                (getSharedSecretKey serverECDH newInfo.PublicKey) |> Convert.ToBase64String;
+            ServerECDH = serverECDH;
+        })
 
 let updateHistoryDB userID tweetID =
     (* Check if it is the very first Tweet for a user, 
@@ -241,7 +290,6 @@ let assignTweetID (orgTweetInfo:TweetInfo) =
         RetweetTimes = orgTweetInfo.RetweetTimes ;
     }
     newTweetInfo
-
 
 
 

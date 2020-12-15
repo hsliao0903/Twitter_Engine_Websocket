@@ -1,6 +1,8 @@
 module UserAPIs
 
 open System
+open System.Security.Cryptography
+open Authentication
 open Message
 open UserInterface
 open WebSocketSharp
@@ -50,7 +52,7 @@ let disableWss (wssDB:Dictionary<string, WebSocket>) =
 
 // Register reuqest callback
 let regCallback (nodeName, wssDB:Dictionary<string,WebSocket>, isSimulation:bool) = fun (msg:MessageEventArgs) ->
-    let replyInfo = (Json.deserialize<ReplyInfo> msg.Data)
+    let replyInfo = (Json.deserialize<RegReply> msg.Data)
     let isSuccess = if (replyInfo.Status = "Success") then (true) else (false)
 
     if isSuccess then
@@ -58,19 +60,17 @@ let regCallback (nodeName, wssDB:Dictionary<string,WebSocket>, isSimulation:bool
         if isSimulation then 
             printfn "[%s] User \"%s\" registered and auto login successfully" nodeName (replyInfo.Desc.Value)
         else isUserModeLoginSuccess <- Success
-
+        serverPublicKey <- replyInfo.ServerPublicKey
     else
         if isSimulation then printfn "[%s] Register failed!\n" nodeName
         else isUserModeLoginSuccess <- Fail
     // Close the session for /register
     wssDB.["Register"].Close()
 
-
-let connectCallback (nodeName, wssDB:Dictionary<string,WebSocket>) = fun (msg:MessageEventArgs) ->
-    let replyInfo = (Json.deserialize<ReplyInfo> msg.Data)
-    let isSuccess = if (replyInfo.Status = "Success") then (true) else (false)
-
-    if isSuccess then
+let connectCallback (nodeName, wssDB:Dictionary<string,WebSocket>, ecdh: ECDiffieHellman) = fun (msg:MessageEventArgs) ->
+    let replyInfo = (Json.deserialize<ConnectReply> msg.Data)
+    match replyInfo.Status with
+    | "Success" -> 
         enableWss (wssDB)
         isUserModeLoginSuccess <- Success
         
@@ -81,10 +81,18 @@ let connectCallback (nodeName, wssDB:Dictionary<string,WebSocket>) = fun (msg:Me
             Tag = "" ;
         }
         wssDB.["QueryHistory"].Send(Json.serialize queryMsg)
-
-    else
+    | "Auth" -> 
+        let challenge = replyInfo.Authentication |> Convert.FromBase64String
+        let signature = getSignature challenge ecdh
+        let (authMsg:ConnectInfo) = {
+            UserID = replyInfo.Desc.Value|> int;
+            ReqType = "Auth";
+            Signature = signature;
+        }
+        wssDB.["Connect"].Send(Json.serialize authMsg)
+    | _ ->
         isUserModeLoginSuccess <- Fail
-    wssDB.["Connect"].Close()
+        wssDB.["Connect"].Close()
 
 let disconnectCallback (nodeName, wssDB:Dictionary<string,WebSocket>) = fun (msg:MessageEventArgs) ->
     disableWss (wssDB)
@@ -149,20 +157,29 @@ let queryCallback (nodeName) = fun (msg:MessageEventArgs) ->
 // Client Actor Node Helper Functinos
 // 
 
-let sendRegMsgToServer (msg:string, isSimulation, wssReg:WebSocket, nodeID) =
+let sendRegMsgToServer (msg:string, isSimulation, wssReg:WebSocket, nodeID, publicKey) =
     wssReg.Connect()
     if isSimulation then
         let regMsg:RegJson = { 
             ReqType = "Register" ; 
             UserID = nodeID ; 
             UserName = "User"+ (nodeID.ToString()) ; 
-            PublicKey = Some ("Key") ;
+            PublicKey = publicKey ;
         }
         let data = (Json.serialize regMsg)
         wssReg.Send(data)
     else
-        wssReg.Send(msg)
-
+        //wssReg.Send(msg)
+        let message = Json.deserialize<RegJson> msg
+        let regMsg:RegJson = { 
+            ReqType = message.ReqType; 
+            UserID = message.UserID; 
+            UserName = message.UserName ; 
+            PublicKey = publicKey ;
+        }
+        let data = (Json.serialize regMsg)
+        wssReg.Send(data)
+   
 
 let sendRequestMsgToServer (msg:string, reqType, wssDB:Dictionary<string,WebSocket>, nodeName) =
     if not (wssDB.[reqType].IsAlive) then
@@ -174,4 +191,17 @@ let sendRequestMsgToServer (msg:string, reqType, wssDB:Dictionary<string,WebSock
             printBanner (sprintf "[%s]\nSession timeout!\n Disconnect from the server..." nodeName)
             // printBanner (sprintf "[%s] Unable to \"%s\", session timeout!\n Please disconnect and then reconnect to the server..." nodeName reqType)
     else 
-        wssDB.[reqType].Send(msg)  
+        wssDB.[reqType].Send(msg)
+
+let sendTweetToServer (msg:string, ws:WebSocket, nodeName, ecdh: ECDiffieHellman) =
+    if not (ws.IsAlive) then
+        isUserModeLoginSuccess <- SessionTimeout        
+    else 
+        let key = getSharedSecretKey ecdh serverPublicKey
+        let signature = getHMACSignature msg key
+        let (signedMsg:SignedTweet) = {
+            UnsignedJson = msg
+            HMACSignature = signature
+        }
+        let data = (Json.serialize signedMsg)
+        ws.Send(data)
