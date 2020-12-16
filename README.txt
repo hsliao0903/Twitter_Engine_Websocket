@@ -1,39 +1,64 @@
-Brief usage:
+------------------------------------------------------------------------
+  Author:
+  Please let me know if there is any question, thanks!
+  Hsiang-Yuan Liao, UFID: 4353-5341   hs.liao@ufl.edu
+  Tung-Lin Chiang, UFID: 9616-8929 
+------------------------------------------------------------------------
 
-1.
-First, run the program in "Twitter_Engine" directory as a server:
-cd Twitter_Engine
-dotnet run
+Brief Demo Video on YouTube: https://www.youtube.com/watch?v=2qXyVVVXmpU&ab_channel=AlexLiao
 
-2. 
-Run the program in "Twitter_Simulator" directory to start the simulation with default parameters:
-cd Twetter_Simulator
-dotnet run debug
+* Directories:
+    * "Twitter_Engine" -> Server Program
+    * "Twitter_Simulator" -> Client Program 
 
-After doing this, the simulator will start to send different kind of API requests to the server on port 9001
-The simulator has 1000 clients, and it will keep simulating infinitely 
-From the server side, there will be server status to show, if pressing any key, it will switch to show the DB status 
+* Special Libraries:
+    * FSharp.Json
+    * Websocket-sharp
+    * Akka.FSharp
+    * FSharp.Data
 
-3.
-Run the simulator with different parameters:
-cd Twetter_Simulator
-dotnet run simulate
-
-It will prompt the user to input different kind of parameters
-We have tested successfully using 10000+ clients for simulation
-
-4.
-Run the simulator in USER mode, which is a terminal for you to send API requests to server manually:
-(It supports multiple simulator programs running in the same time)
-cd Twetter_Simulator
-dotnet run user
+* Description:  
+    * Implementation a Websocket interface to [Project 4 part 1] 
+    * It contains a Server and a Client program which simulates some Twitter APIs
+    * Bonus: public key based authentication method
 
 
-In the user mode, we have to connect to the server with a user account first, or register a new account. 
-After successfully connected to the server, we could use different kind of commands to send requests.
-We could disconnect to the server, and reconnect the server with different accounts
+* Usage: The only difference between user mode and debug mode is the debug log messages
+	 Please feel free to choose any mode for each program they don't have to be in the same mode 
+
+    * Client Program in Twitter_Simulator dir
+        * “dotnet run user”           (user mode)
+        * “dotnet run debug”          (debug mode)
+
+    * Server Program in Twitter_Engine dir
+        * “dotnet run”        	      (user mode)
+        * “dotnet run debug”          (debug mode)
 
 
-Author:
-Please let me know if there is any question, thanks!
-Hsiang-Yuan Alex Liao    hs.liao@ufl.edu
+* Client Program: CLI based terminal (with message prompts, just follow the messages in the terminal)
+* Server Program: Press any key to terminate the program while running
+
+
+------------------------------------------------------------------------
+  More Details
+------------------------------------------------------------------------
+
+* Limitations:
+
+    * Only support one successful registration in each client program for now (due to the private key issue)
+      Able to run multiple client programs in different terminals at the same time
+
+    * The websocket session idle timeout period is small (for debugging and developing purpose)
+      If the session timeout happens, please disconnect and then connect the userID again
+
+    * User cannot retweet his own Tweet
+
+    * Only support at most one tag and one mention in each Tweet
+
+
+* Possible Authentication Method Failure reasons:
+
+    * The authentication method does not complete in one second limit. Server will only cache the challenge for one second.
+
+    * HMAC authentication fails because connecting to different users in a single client program
+
