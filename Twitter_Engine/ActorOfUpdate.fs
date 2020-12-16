@@ -57,11 +57,9 @@ let registerActor (serverMailbox:Actor<RegActorMsg>) =
             sessionManager.SendTo(data,sid)
 
             if status = "Success" then
-                // let connectRequst:ConnectInfo = {
-                //     ReqType = "Connect" ;
-                //     UserID = regMsg.UserID ;
-                // }
-                // let data = (Json.serialize connectRequst)
+                if isAuthDebug then
+                    printfn "Generate server public key for User%i: %A" regMsg.UserID serverPublicKey
+                    printfn "\n[%s] Save the User's public key and assigned server public key in DB" nodeName
                 updateKeyDB regMsg serverECDH 
                 connectionActorRef <! AutoConnect (regMsg.UserID)
 
@@ -206,7 +204,7 @@ let retweetActor (serverMailbox:Actor<ActorMsg>) =
                     ReqType = "Reply" ;
                     Type = "SendTweet" ;
                     Status =  "Failed" ;
-                    Desc =  Some "Retweet failed, can't find the specified Tweet ID or due to author rule\n" ;
+                    Desc =  Some "Retweet failed, can't find the specified Tweet ID or due to author rule" ;
                 }
                 let data = (Json.serialize reply)
                 sessionManager.SendTo(data,sid)

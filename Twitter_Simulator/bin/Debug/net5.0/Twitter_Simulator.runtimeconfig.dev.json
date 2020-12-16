@@ -1,8 +1,8 @@
 {
   "runtimeOptions": {
     "additionalProbingPaths": [
-      "/Users/jiangdonglin/.dotnet/store/|arch|/|tfm|",
-      "/Users/jiangdonglin/.nuget/packages"
+      "/Users/hsiang-yuanliao/.dotnet/store/|arch|/|tfm|",
+      "/Users/hsiang-yuanliao/.nuget/packages"
     ]
   }
 }

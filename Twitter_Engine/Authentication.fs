@@ -3,6 +3,7 @@ module Authentication
 open System
 open System.Security.Cryptography
 
+let mutable isAuthDebug = false
 
 let stringToBytes (str: string) = 
     Text.Encoding.UTF8.GetBytes str
@@ -51,11 +52,16 @@ let getSharedSecretKey (serverECDH: ECDiffieHellman) (publicKey: String) =
     ecdh.ImportSubjectPublicKeyInfo((System.ReadOnlySpan pub), (ref size))
     serverECDH.DeriveKeyMaterial(ecdh.PublicKey)
 
-let getHMACSignature (jsonMessage: string) (sharedSecretKey: byte[]) =
-    use hmac = new HMACSHA1(sharedSecretKey)
-    jsonMessage |> stringToBytes |> hmac.ComputeHash
+// let getHMACSignature (jsonMessage: string) (sharedSecretKey: byte[]) =
+//     use hmac = new HMACSHA1(sharedSecretKey)
+//     jsonMessage |> stringToBytes |> hmac.ComputeHash
 
 let verifyHMAC (jsonMessage:string) (signature: string) (sharedSecretKey: byte[]) =
     use hmac = new HMACSHA1(sharedSecretKey)
+    if isAuthDebug then
+        printfn "Verifying the HMAC signature for this Json message with shared secret key..."
     let computedSignature = jsonMessage |> stringToBytes |> hmac.ComputeHash |> Convert.ToBase64String 
+    if isAuthDebug then
+        printfn "computed HMAC signature on Server side using shared secret key\n(shared secret key is computed by server's private key and user's public key)..."
+        printfn "[Compare equivalent]\nJson msg HMAC: %A\nComputed HMAC: %A\n" signature computedSignature
     signature |> computedSignature.Equals

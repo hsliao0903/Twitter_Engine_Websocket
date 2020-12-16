@@ -3,6 +3,9 @@ module Authentication
 open System
 open System.Security.Cryptography
 
+// a flag for authentication debugging
+let mutable isAuthDebug = false
+
 
 let stringToBytes (str: string) = 
     Text.Encoding.UTF8.GetBytes str
@@ -11,14 +14,17 @@ let stringToBytes (str: string) =
 /// Challenge Algorithm Functions
 /////////////////////////////////////////////// 
 
-let generateChallenge =
-    use rng = RNGCryptoServiceProvider.Create()
-    let challenge = Array.zeroCreate<byte> 32
-    rng.GetBytes challenge
-    challenge |> Convert.ToBase64String
+// let generateChallenge =
+//     use rng = RNGCryptoServiceProvider.Create()
+//     let challenge = Array.zeroCreate<byte> 32
+//     rng.GetBytes challenge
+//     challenge |> Convert.ToBase64String
 
 let addTimePadding (message: byte[]) =
-    let padding = DateTimeOffset.UtcNow.ToUnixTimeSeconds() |> BitConverter.GetBytes
+    let curTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+    let padding = curTime |> BitConverter.GetBytes
+    if isAuthDebug then
+         printfn "Add time padding to message:\ncurrent unix time in second:%i (unix seconds)\n" curTime 
     Array.concat [|message; padding|]
 
 let getHashed (message: byte[]) = 
@@ -33,7 +39,10 @@ let getECPublicKey (pub:byte[]) =
 let getSignature (message: byte[]) (ecdh: ECDiffieHellman) =
     let ecdsa = ecdh.ExportParameters(true) |> ECDsa.Create
     let hasedMessage = message |> addTimePadding |> getHashed
+    if isAuthDebug then
+        printfn "Hashed (challenge + current unix time): %A" (hasedMessage|>Convert.ToBase64String)
     ecdsa.SignData(hasedMessage, HashAlgorithmName.SHA256) |> Convert.ToBase64String
+
 
 ///////////////////////////////////////////////
 /// DH & HMAC Functions

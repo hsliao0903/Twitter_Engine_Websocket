@@ -103,14 +103,17 @@ let main argv =
             let terminalRef = spawn system "-Terminal" (clientActorNode false)
             startUserInterface terminalRef
 
-        else if programMode = "simulate" then
-            getSimualtionParamFromUser()
-            startSimulation system globalTimer (clientActorNode true)
+        // else if programMode = "simulate" then
+        //     getSimualtionParamFromUser()
+        //     startSimulation system globalTimer (clientActorNode true)
 
         else if programMode = "debug" then
-            printfn "\n\n[Debug Mode]\n"
+            printfn "\n\n[Debug Mode]Show authentication messages\n"
+            isAuthDebug <- true
+            let terminalRef = spawn system "-Terminal" (clientActorNode false)
+            startUserInterface terminalRef
             // use default simulation parameters
-            startSimulation system globalTimer (clientActorNode true)
+            // startSimulation system globalTimer (clientActorNode true)
         else
             printfn "\n\n[Error] Wrong argument!!\n Plese use: \n\t1. dotnet run simulate\n\t2. dotnet run user\n\t3. dotnet run debug\n"
             Environment.Exit 1

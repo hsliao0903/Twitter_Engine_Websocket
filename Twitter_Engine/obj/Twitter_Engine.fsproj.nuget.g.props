@@ -4,8 +4,8 @@
     <RestoreSuccess Condition=" '$(RestoreSuccess)' == '' ">True</RestoreSuccess>
     <RestoreTool Condition=" '$(RestoreTool)' == '' ">NuGet</RestoreTool>
     <ProjectAssetsFile Condition=" '$(ProjectAssetsFile)' == '' ">$(MSBuildThisFileDirectory)project.assets.json</ProjectAssetsFile>
-    <NuGetPackageRoot Condition=" '$(NuGetPackageRoot)' == '' ">/Users/jiangdonglin/.nuget/packages/</NuGetPackageRoot>
-    <NuGetPackageFolders Condition=" '$(NuGetPackageFolders)' == '' ">/Users/jiangdonglin/.nuget/packages/</NuGetPackageFolders>
+    <NuGetPackageRoot Condition=" '$(NuGetPackageRoot)' == '' ">/Users/hsiang-yuanliao/.nuget/packages/</NuGetPackageRoot>
+    <NuGetPackageFolders Condition=" '$(NuGetPackageFolders)' == '' ">/Users/hsiang-yuanliao/.nuget/packages/</NuGetPackageFolders>
     <NuGetProjectStyle Condition=" '$(NuGetProjectStyle)' == '' ">PackageReference</NuGetProjectStyle>
     <NuGetToolVersion Condition=" '$(NuGetToolVersion)' == '' ">5.8.0</NuGetToolVersion>
   </PropertyGroup>
@@ -16,12 +16,12 @@
     <MSBuildAllProjects>$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
-    <PkgWebSocketSharp Condition=" '$(PkgWebSocketSharp)' == '' ">/Users/jiangdonglin/.nuget/packages/websocketsharp/1.0.3-rc11</PkgWebSocketSharp>
-    <PkgFSharp_Core Condition=" '$(PkgFSharp_Core)' == '' ">/Users/jiangdonglin/.nuget/packages/fsharp.core/5.0.0</PkgFSharp_Core>
-    <PkgFSharp_Json Condition=" '$(PkgFSharp_Json)' == '' ">/Users/jiangdonglin/.nuget/packages/fsharp.json/0.4.0</PkgFSharp_Json>
-    <PkgFSharp_Data Condition=" '$(PkgFSharp_Data)' == '' ">/Users/jiangdonglin/.nuget/packages/fsharp.data/3.3.3</PkgFSharp_Data>
-    <PkgAkka Condition=" '$(PkgAkka)' == '' ">/Users/jiangdonglin/.nuget/packages/akka/1.4.12</PkgAkka>
-    <PkgAkka_Remote Condition=" '$(PkgAkka_Remote)' == '' ">/Users/jiangdonglin/.nuget/packages/akka.remote/1.4.12</PkgAkka_Remote>
-    <PkgAkka_FSharp Condition=" '$(PkgAkka_FSharp)' == '' ">/Users/jiangdonglin/.nuget/packages/akka.fsharp/1.4.12</PkgAkka_FSharp>
+    <PkgWebSocketSharp Condition=" '$(PkgWebSocketSharp)' == '' ">/Users/hsiang-yuanliao/.nuget/packages/websocketsharp/1.0.3-rc11</PkgWebSocketSharp>
+    <PkgFSharp_Core Condition=" '$(PkgFSharp_Core)' == '' ">/Users/hsiang-yuanliao/.nuget/packages/fsharp.core/5.0.0</PkgFSharp_Core>
+    <PkgFSharp_Json Condition=" '$(PkgFSharp_Json)' == '' ">/Users/hsiang-yuanliao/.nuget/packages/fsharp.json/0.4.0</PkgFSharp_Json>
+    <PkgFSharp_Data Condition=" '$(PkgFSharp_Data)' == '' ">/Users/hsiang-yuanliao/.nuget/packages/fsharp.data/3.3.3</PkgFSharp_Data>
+    <PkgAkka Condition=" '$(PkgAkka)' == '' ">/Users/hsiang-yuanliao/.nuget/packages/akka/1.4.12</PkgAkka>
+    <PkgAkka_Remote Condition=" '$(PkgAkka_Remote)' == '' ">/Users/hsiang-yuanliao/.nuget/packages/akka.remote/1.4.12</PkgAkka_Remote>
+    <PkgAkka_FSharp Condition=" '$(PkgAkka_FSharp)' == '' ">/Users/hsiang-yuanliao/.nuget/packages/akka.fsharp/1.4.12</PkgAkka_FSharp>
   </PropertyGroup>
 </Project>

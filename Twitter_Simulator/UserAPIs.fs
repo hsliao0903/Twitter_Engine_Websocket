@@ -27,14 +27,14 @@ let createWebsocketDB serverWebsockAddr =
     wssActorDB
     
 let enableWss (wssDB:Dictionary<string, WebSocket>) =
-    (wssDB.["SendTweet"].Connect())
-    (wssDB.["Retweet"].Connect())
-    (wssDB.["Subscribe"].Connect())
-    (wssDB.["Disconnect"].Connect())
-    (wssDB.["QueryHistory"].Connect())
-    (wssDB.["QueryMention"].Connect())
-    (wssDB.["QueryTag"].Connect())
-    (wssDB.["QuerySubscribe"].Connect())
+    if (not wssDB.["SendTweet"].IsAlive) then (wssDB.["SendTweet"].Connect())
+    if (not wssDB.["Retweet"].IsAlive) then (wssDB.["Retweet"].Connect())
+    if (not wssDB.["Subscribe"].IsAlive) then (wssDB.["Subscribe"].Connect())
+    if (not wssDB.["Disconnect"].IsAlive) then (wssDB.["Disconnect"].Connect())
+    if (not wssDB.["QueryHistory"].IsAlive) then (wssDB.["QueryHistory"].Connect())
+    if (not wssDB.["QueryMention"].IsAlive) then (wssDB.["QueryMention"].Connect())
+    if (not wssDB.["QueryTag"].IsAlive) then (wssDB.["QueryTag"].Connect())
+    if (not wssDB.["QuerySubscribe"].IsAlive) then (wssDB.["QuerySubscribe"].Connect())
 
 let disableWss (wssDB:Dictionary<string, WebSocket>) =
     if (wssDB.["SendTweet"].IsAlive) then (wssDB.["SendTweet"].Close())
@@ -59,21 +59,26 @@ let regCallback (nodeName, wssDB:Dictionary<string,WebSocket>, isSimulation:bool
         enableWss (wssDB)
         if isSimulation then 
             printfn "[%s] User \"%s\" registered and auto login successfully" nodeName (replyInfo.Desc.Value)
-        else isUserModeLoginSuccess <- Success
+        else 
         serverPublicKey <- replyInfo.ServerPublicKey
+        if isAuthDebug then
+            printfn "\n\nReceive the server's ECDH public key: %A" serverPublicKey
+        isUserModeLoginSuccess <- Success
     else
         if isSimulation then printfn "[%s] Register failed!\n" nodeName
         else isUserModeLoginSuccess <- Fail
     // Close the session for /register
     wssDB.["Register"].Close()
 
-let connectCallback (nodeName, wssDB:Dictionary<string,WebSocket>, ecdh: ECDiffieHellman) = fun (msg:MessageEventArgs) ->
+let connectCallback (nodeID, wssDB:Dictionary<string,WebSocket>, ecdh: ECDiffieHellman) = fun (msg:MessageEventArgs) ->
     let replyInfo = (Json.deserialize<ConnectReply> msg.Data)
     match replyInfo.Status with
     | "Success" -> 
         enableWss (wssDB)
-        isUserModeLoginSuccess <- Success
         
+        wssDB.["Connect"].Close()
+        if isAuthDebug then
+            printfn "[User%i] Server confirms our authentication, successfully login!" nodeID
         (* Automatically query the history tweets of the connected user *)
         let (queryMsg:QueryInfo) = {
             ReqType = "QueryHistory" ;
@@ -81,9 +86,15 @@ let connectCallback (nodeName, wssDB:Dictionary<string,WebSocket>, ecdh: ECDiffi
             Tag = "" ;
         }
         wssDB.["QueryHistory"].Send(Json.serialize queryMsg)
+        isUserModeLoginSuccess <- Success
     | "Auth" -> 
         let challenge = replyInfo.Authentication |> Convert.FromBase64String
+        if isAuthDebug then
+            printfn "Receicve a challenge from Server: %A" replyInfo.Authentication
+            printfn "Now, add a time padding to the challenge and then digital signs it...\n"
         let signature = getSignature challenge ecdh
+        if isAuthDebug then 
+            printfn "The signature after signing with User's private key : %A" signature
         let (authMsg:ConnectInfo) = {
             UserID = replyInfo.Desc.Value|> int;
             ReqType = "Auth";
@@ -92,6 +103,7 @@ let connectCallback (nodeName, wssDB:Dictionary<string,WebSocket>, ecdh: ECDiffi
         wssDB.["Connect"].Send(Json.serialize authMsg)
     | _ ->
         isUserModeLoginSuccess <- Fail
+        printBanner (sprintf "Faild to connect and login for UserID: %i\nError msg: %A" nodeID (replyInfo.Desc.Value))
         wssDB.["Connect"].Close()
 
 let disconnectCallback (nodeName, wssDB:Dictionary<string,WebSocket>) = fun (msg:MessageEventArgs) ->
@@ -183,13 +195,14 @@ let sendRegMsgToServer (msg:string, isSimulation, wssReg:WebSocket, nodeID, publ
 
 let sendRequestMsgToServer (msg:string, reqType, wssDB:Dictionary<string,WebSocket>, nodeName) =
     if not (wssDB.[reqType].IsAlive) then
-        isUserModeLoginSuccess <- SessionTimeout
         if reqType = "Disconnect" then
             wssDB.[reqType].Connect()
             wssDB.[reqType].Send(msg)
+            printBanner (sprintf "[%s]\nDisconnect from the server..." nodeName)
             isUserModeLoginSuccess <- SessionTimeout
-            printBanner (sprintf "[%s]\nSession timeout!\n Disconnect from the server..." nodeName)
             // printBanner (sprintf "[%s] Unable to \"%s\", session timeout!\n Please disconnect and then reconnect to the server..." nodeName reqType)
+        else
+            isUserModeLoginSuccess <- SessionTimeout
     else 
         wssDB.[reqType].Send(msg)
 
@@ -198,7 +211,14 @@ let sendTweetToServer (msg:string, ws:WebSocket, nodeName, ecdh: ECDiffieHellman
         isUserModeLoginSuccess <- SessionTimeout        
     else 
         let key = getSharedSecretKey ecdh serverPublicKey
+
         let signature = getHMACSignature msg key
+        if isAuthDebug then
+            printfn "Generate shared secret key with server with user's private key and server's public key:"
+            printfn "Shared secret key (it won't send to the server):\n %A" (key|>Convert.ToBase64String)
+            printfn "Origin message: %A" msg
+            printfn "HMAC sign the org message with shared secret key before sending to server"
+            printfn "HMAC signatrue: %A" signature
         let (signedMsg:SignedTweet) = {
             UnsignedJson = msg
             HMACSignature = signature

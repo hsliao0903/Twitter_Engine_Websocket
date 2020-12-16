@@ -135,6 +135,7 @@ let challengeCaching (userID: int) (challenge: string) =
     async{
         challengeCache.Add(userID, challenge)
         do! Async.Sleep 1000
+        printfn "Challenge expired for: %A\n[timestamp] %A " challenge (DateTime.Now)
         challengeCache.Remove(userID) |> ignore
     }
     

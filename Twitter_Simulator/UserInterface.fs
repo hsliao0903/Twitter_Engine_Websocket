@@ -111,7 +111,8 @@ let startUserInterface terminalRef =
                         curState <- 1
                         (showPrompt "afterLogin" curUserID)
                     else if isUserModeLoginSuccess = Fail then
-                        printBanner (sprintf "Faild to connect and login for UserID: %i\nIncorrect userID or already connected before..." tmpuserID)
+                        ()
+                        //printBanner (sprintf "Faild to connect and login for UserID: %i\nIncorrect userID or already connected before..." tmpuserID)
 
                     else
                         printBanner ("Faild to connect and login for UserID: " + tmpuserID.ToString() + "\n(Server no response, timeout occurs)")
@@ -149,7 +150,7 @@ let startUserInterface terminalRef =
                     else if isUserModeLoginSuccess = SessionTimeout then
                         curUserID <- -1
                         curState <- 0
-                        (showPrompt "loginFirst" curUserID)
+                        // (showPrompt "loginFirst" curUserID)
 
                 | "5"| "history" -> 
                     terminalRef <! genQueryJSON "QueryHistory"

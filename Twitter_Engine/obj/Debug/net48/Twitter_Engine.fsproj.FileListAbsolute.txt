@@ -51,3 +51,9 @@
 /Users/jiangdonglin/Desktop/Courses/Fall20/Distributed Operating System Principles/Project4_2/Twitter_Engine_Websocket/Twitter_Engine/obj/Debug/net48/Twitter_Engine.fsproj.CopyComplete
 /Users/jiangdonglin/Desktop/Courses/Fall20/Distributed Operating System Principles/Project4_2/Twitter_Engine_Websocket/Twitter_Engine/obj/Debug/net48/Twitter_Engine.exe
 /Users/jiangdonglin/Desktop/Courses/Fall20/Distributed Operating System Principles/Project4_2/Twitter_Engine_Websocket/Twitter_Engine/obj/Debug/net48/Twitter_Engine.pdb
+/Users/hsiang-yuanliao/Documents/2020 Fall Semester/Distributed Operating System/Project_Repo/Project4_Twitter_Websocket/Twitter_Engine/obj/Debug/net48/Twitter_Engine.fsprojAssemblyReference.cache
+/Users/hsiang-yuanliao/Documents/2020 Fall Semester/Distributed Operating System/Project_Repo/Project4_Twitter_Websocket/Twitter_Engine/obj/Debug/net48/Twitter_Engine.exe.config
+/Users/hsiang-yuanliao/Documents/2020 Fall Semester/Distributed Operating System/Project_Repo/Project4_Twitter_Websocket/Twitter_Engine/obj/Debug/net48/Twitter_Engine.AssemblyInfoInputs.cache
+/Users/hsiang-yuanliao/Documents/2020 Fall Semester/Distributed Operating System/Project_Repo/Project4_Twitter_Websocket/Twitter_Engine/obj/Debug/net48/Twitter_Engine.AssemblyInfo.fs
+/Users/hsiang-yuanliao/Documents/2020 Fall Semester/Distributed Operating System/Project_Repo/Project4_Twitter_Websocket/Twitter_Engine/obj/Debug/net48/Twitter_Engine.exe
+/Users/hsiang-yuanliao/Documents/2020 Fall Semester/Distributed Operating System/Project_Repo/Project4_Twitter_Websocket/Twitter_Engine/obj/Debug/net48/Twitter_Engine.pdb

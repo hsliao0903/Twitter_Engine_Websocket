@@ -66,6 +66,9 @@ let connectionActor (serverMailbox:Actor<ConActorMsg>) =
                 if not (onlineUserSet.Contains(userID)) && isValidUser userID then
                     let ch = generateChallenge
                     challengeCaching userID ch |> Async.Start
+                    if isAuthDebug then
+                        printfn "Generate challenge: %A\nAnd then cache the challenge for 1 second..." ch
+                        printfn "[timestamp] %A\n" (DateTime.Now)
                     let (reply:ConnectReply) = { 
                         ReqType = "Reply" ;
                         Type = reqType ;
@@ -90,6 +93,10 @@ let connectionActor (serverMailbox:Actor<ConActorMsg>) =
                 if (challengeCache.ContainsKey userID) then
                     let answer = challengeCache.[userID]
                     let signature = connectionInfo.Signature
+                    if isAuthDebug then
+                        printfn "[timestamp] Server rx authentication reply from user at %A" DateTime.Now
+                        printfn "Server try to verify the signed challenge sent from User%i..." userID
+                        printfn "Retrive the cached challenge and then verfiy with user's public key"
                     if (verifySignature answer signature keyInfo.UserPublicKey) then
                         let (reply:ConnectReply) = { 
                             ReqType = "Reply" ;
@@ -100,7 +107,18 @@ let connectionActor (serverMailbox:Actor<ConActorMsg>) =
                         }
                         let data = (Json.serialize reply)
                         sessionManager.SendTo(data,sid)  
-                        serverMailbox.Self <! AutoConnect userID
+                        // serverMailbox.Self <! AutoConnect userID
+                    else
+                        printfn "\n[Error] Authentication failed for User%i\n" userID
+                        let (reply:ConnectReply) = { 
+                            ReqType = "Reply" ;
+                            Type = reqType ;
+                            Status =  "Fail" ;
+                            Desc =  Some "Authentication failed!" ;
+                            Authentication = "";
+                        }
+                        let data = (Json.serialize reply)
+                        sessionManager.SendTo(data,sid)
                 else
                     let (reply:ConnectReply) = { 
                         ReqType = "Reply" ;
@@ -150,7 +168,6 @@ let regActorRef = spawn system "Register-DB-Worker" registerActor
 let tweetActorRef = spawn system "AddTweet-DB-Worker" tweetActor
 let retweetActorRef = spawn system "ReTweet-DB-Worker" retweetActor
 let subscriveActorRef = spawn system "Subscrive-DB-Worker" subscribeActor
-//let loginActorRef = spawn system "Login-DB-Worker" loginActor
 let connectionActorRef = spawn system "Connection-DB-Worker" connectionActor
 let queryHisActorRef = spawn system "QHistory-DB-Worker" queryHistoryActor
 let queryMenActorRef = spawn system "QMention-DB-Worker" queryMentionActor
@@ -160,54 +177,54 @@ let querySubActorRef = spawn system "QSub-DB-Worker" querySubActor
 type Register () =
     inherit WebSocketBehavior()
     override wssm.OnMessage message = 
-        printfn "[/register] sessionID:%A Data:%s" wssm.ID message.Data 
+        printfn "\n[/register]\nData:%s\n" message.Data 
         regActorRef <! WsockToRegActor (message.Data, connectionActorRef, wssm.Sessions, wssm.ID)
 
 type Tweet () =
     inherit WebSocketBehavior()
     override wssm.OnMessage message = 
-        printfn "[/tweet/send] sessionID:%A Data:%s" wssm.ID message.Data 
+        printfn "\n[/tweet/send]\nData:%s\n" message.Data 
         tweetActorRef <! WsockToActor (message.Data, wssm.Sessions, wssm.ID)
 
 type Retweet () =
     inherit WebSocketBehavior()
     override wssm.OnMessage message = 
-        printfn "[/tweet/retweet] sessionID:%A Data:%s" wssm.ID message.Data 
+        printfn "\n[/tweet/retweet]\nData:%s\n"  message.Data 
         retweetActorRef <! WsockToActor (message.Data, wssm.Sessions, wssm.ID)
 
 type Subscribe () =
     inherit WebSocketBehavior()
     override wssm.OnMessage message = 
-        printfn "[/subscribe] sessionID:%A Data:%s" wssm.ID message.Data 
+        printfn "\n[/subscribe]\nData:%s\n" message.Data 
         subscriveActorRef <! WsockToActor (message.Data,wssm.Sessions,wssm.ID)
 
 type Connection () =
     inherit WebSocketBehavior()
     override wssm.OnMessage message = 
-        printfn "[/connection] sessionID:%A Data:%s" (wssm.ID) (message.Data)
+        printfn "\n[/connection]\nData:%s\n" (message.Data)
         connectionActorRef <! WsockToConActor (message.Data,wssm.Sessions,wssm.ID)
 
 type QueryHis () =
     inherit WebSocketBehavior()
     override wssm.OnMessage message = 
-        printfn "[/tweet/query] sessionID:%A Data:%s" wssm.ID message.Data
+        printfn "\n[/tweet/query]\nData:%s\n" message.Data
         queryHisActorRef <! WsockToQActor (message.Data, getRandomWorker(), wssm.Sessions, wssm.ID)
 
 type QueryMen () =
     inherit WebSocketBehavior()
     override wssm.OnMessage message = 
-        printfn "[/mention/query] sessionID:%A Data:%s" wssm.ID message.Data
+        printfn "\n[/mention/query]\nData:%s\n" message.Data
         queryMenActorRef <! WsockToQActor (message.Data, getRandomWorker(), wssm.Sessions, wssm.ID)
 
 type QueryTag () =
     inherit WebSocketBehavior()
     override wssm.OnMessage message = 
-        printfn "[/tag/query] sessionID:%A Data:%s" wssm.ID message.Data
+        printfn "\n[/tag/query]\nData:%s\n" message.Data
         queryTagActorRef <! WsockToQActor (message.Data, getRandomWorker(), wssm.Sessions, wssm.ID)
 type QuerySub () =
     inherit WebSocketBehavior()
     override wssm.OnMessage message = 
-        printfn "[/subscribe/query] sessionID:%A Data:%s" wssm.ID message.Data
+        printfn "\n[/subscribe/query]\nData:%s\n" message.Data
         querySubActorRef <! WsockToQActor (message.Data, getRandomWorker() , wssm.Sessions, wssm.ID)
 
 
@@ -216,6 +233,12 @@ type QuerySub () =
 [<EntryPoint>]
 let main argv =
     try
+        if argv.Length <> 0 then
+            isAuthDebug <- 
+                match (argv.[0]) with
+                | "debug" -> true
+                | _ -> false
+
         wss.AddWebSocketService<Register> ("/register")
         wss.AddWebSocketService<Tweet> ("/tweet/send")
         wss.AddWebSocketService<Retweet> ("/tweet/retweet")
@@ -227,7 +250,12 @@ let main argv =
         wss.AddWebSocketService<QueryTag> ("/tag/query")
         wss.AddWebSocketService<QuerySub> ("/subscribe/query")
         wss.Start ()
-        printfn "Server start...."
+        printfn "\n-------------------------------------"
+        if isAuthDebug then
+            printfn "Twitter server start.... \n[Debug Authentication Mode On]"
+        else
+            printfn "Twitter server start...."
+        printfn "-------------------------------------\n"
         Console.ReadLine() |> ignore
         wss.Stop()
  
