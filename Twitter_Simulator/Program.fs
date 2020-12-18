@@ -120,7 +120,7 @@ let main argv =
 
           
     with | :? IndexOutOfRangeException ->
-            printfn "\n\n[Error] Wrong argument!!\n Plese use: \n1. dotnet run simulate\n2. dotnet run user\n\n"
+            printfn "\n\n[Error] Wrong argument!!\n Plese use: \n1. dotnet run user\n2. dotnet run debug\n\n"
 
          | :? FormatException ->
             printfn "\n[Main] FormatException!\n"

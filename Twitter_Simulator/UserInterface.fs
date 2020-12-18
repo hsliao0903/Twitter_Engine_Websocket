@@ -170,6 +170,7 @@ let startUserInterface terminalRef =
 
                 | "9" | "exit" | "ex" ->
                     terminalRef <! genConnectDisconnectJSON ("Disconnect", curUserID)
+                    waitForServerResponse (5.0)
                     printBanner "Exit the user interface terminal program, bye!"
                     Environment.Exit 1
                 | _ ->
