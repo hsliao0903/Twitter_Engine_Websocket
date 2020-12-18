@@ -1,11 +1,42 @@
 ------------------------------------------------------------------------
-  Author:
-  Please let me know if there is any question, thanks!
+ Goal
+------------------------------------------------------------------------
+Implement Websocket and public key based authentication method based on Twitter_Engine_Simulation Project:
+https://github.com/hsliao0903/Twitter_Engine_Simulation
+
+Instead of using Akaa.Remote, we use Websocket and JSON for communication
+An ECDH authentication method while Twitter accound registraton and API request
+A CLI based terminal for accessing the server
+
+
+------------------------------------------------------------------------
+  Libraries/Programming labguage
+------------------------------------------------------------------------
+.NET 5.0
+F#
+Akka.FSharp
+FSharp.JSON
+Websocket-sharp
+
+
+------------------------------------------------------------------------
+  Brief Demo Vedio
+------------------------------------------------------------------------
+Brief Demo Video on YouTube: 
+https://www.youtube.com/watch?v=2qXyVVVXmpU&ab_channel=AlexLiao
+
+
+------------------------------------------------------------------------
+  Author
+------------------------------------------------------------------------
+  Please let me know if there is any other questions, thanks!
   Hsiang-Yuan Liao, UFID: 4353-5341   hs.liao@ufl.edu
   Tung-Lin Chiang, UFID: 9616-8929 
-------------------------------------------------------------------------
 
-Brief Demo Video on YouTube: https://www.youtube.com/watch?v=2qXyVVVXmpU&ab_channel=AlexLiao
+
+------------------------------------------------------------------------
+  Usage
+------------------------------------------------------------------------
 
 * Directories:
     * "Twitter_Engine" -> Server Program
